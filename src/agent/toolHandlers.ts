@@ -33,9 +33,13 @@ Respond with ONLY valid JSON, no markdown code blocks.`
 
   const raw = await analyzeImageWithVision(ctx.apiKey, args.image_url, prompt)
 
-  // Strip markdown code blocks if present
-  const cleaned = raw.replace(/```(?:json)?\n?/g, '').trim()
-  const profile: CharacterProfile = JSON.parse(cleaned)
+  // Extract JSON — strip markdown fences and find the first {...} block
+  const fenceStripped = raw.replace(/```(?:json)?\n?/g, '').trim()
+  const jsonMatch = fenceStripped.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error(`Could not parse character analysis response. Raw response: ${raw.slice(0, 200)}`)
+  }
+  const profile: CharacterProfile = JSON.parse(jsonMatch[0])
   return profile
 }
 

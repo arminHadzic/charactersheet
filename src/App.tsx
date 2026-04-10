@@ -101,16 +101,28 @@ function MainApp() {
     })
 
     store.addMessage('user', `Create a model sheet for this character: ${url}`)
-    await orchestratorRef.current.runTurn(
-      `Please create a comprehensive model sheet for the character in this image: ${url}`,
-    )
+    try {
+      await orchestratorRef.current.runTurn(
+        `Please create a comprehensive model sheet for the character in this image: ${url}`,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      store.setAgentStatus('error', msg)
+      store.addMessage('agent', `Error: ${msg}`)
+    }
   }
 
   const handleSendMessage = async (message: string) => {
     if (!orchestratorRef.current) return
     store.addMessage('user', message)
     store.setAgentStatus('generating')
-    await orchestratorRef.current.runTurn(message)
+    try {
+      await orchestratorRef.current.runTurn(message)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      store.setAgentStatus('error', msg)
+      store.addMessage('agent', `Error: ${msg}`)
+    }
   }
 
   return (

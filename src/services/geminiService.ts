@@ -54,25 +54,21 @@ export async function analyzeImageWithVision(
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-  // Fetch image as base64
-  const response = await fetch(imageUrl)
-  const blob = await response.blob()
-  const base64 = await blobToBase64(blob)
-  const mimeType = blob.type || 'image/jpeg'
-
+  // Pass the URL directly via fileData — Gemini's servers fetch the image,
+  // avoiding browser CORS restrictions entirely.
+  const mimeType = guessMimeType(imageUrl)
   const result = await model.generateContent([
-    { inlineData: { data: base64.split(',')[1], mimeType } },
+    { fileData: { fileUri: imageUrl, mimeType } },
     prompt,
   ])
 
   return result.response.text()
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
+function guessMimeType(url: string): string {
+  const lower = url.toLowerCase().split('?')[0]
+  if (lower.endsWith('.png')) return 'image/png'
+  if (lower.endsWith('.gif')) return 'image/gif'
+  if (lower.endsWith('.webp')) return 'image/webp'
+  return 'image/jpeg'
 }

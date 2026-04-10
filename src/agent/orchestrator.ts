@@ -65,7 +65,14 @@ export class AgentOrchestrator {
         const toolResultParts: Part[] = []
 
         for (const fc of result.functionCalls) {
-          const toolResult = await this.executeTool(fc.name, fc.args)
+          let toolResult: unknown
+          try {
+            toolResult = await this.executeTool(fc.name, fc.args)
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            this.callbacks.onError(`Tool "${fc.name}" failed: ${msg}`)
+            return
+          }
           toolResultParts.push({
             functionResponse: {
               name: fc.name,
