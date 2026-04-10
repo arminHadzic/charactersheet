@@ -25,7 +25,7 @@ export async function callGeminiWithTools(
   functionCalls: Array<{ name: string; args: Record<string, unknown> }>
 }> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash-preview-05-20',
+    model: 'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools: [{ functionDeclarations: tools } as Tool],
   })
@@ -52,7 +52,7 @@ export async function analyzeImageWithVision(
   prompt: string,
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Fetch image as base64
   const response = await fetch(imageUrl)
