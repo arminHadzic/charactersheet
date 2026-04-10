@@ -1,0 +1,164 @@
+import { useEffect, useRef } from 'react'
+import { useSessionStore } from './store/sessionStore'
+import { AgentOrchestrator } from './agent/orchestrator'
+import { composeModelSheet } from './canvas/sheetComposer'
+import ApiKeyGate from './components/ApiKeyGate'
+import CharacterInput from './components/CharacterInput'
+import AgentStatusBar from './components/AgentStatusBar'
+import ComponentGrid from './components/ComponentGrid'
+import ChatPanel from './components/ChatPanel'
+import ModelSheetViewer from './components/ModelSheetViewer'
+
+export default function App() {
+  return (
+    <ApiKeyGate>
+      <MainApp />
+    </ApiKeyGate>
+  )
+}
+
+function MainApp() {
+  const store = useSessionStore()
+  const orchestratorRef = useRef<AgentOrchestrator | null>(null)
+
+  // Initialize orchestrator when API key is available
+  useEffect(() => {
+    if (!store.apiKey) return
+
+    orchestratorRef.current = new AgentOrchestrator(store.apiKey, {
+      onChatMessage: (role, text) => store.addMessage(role, text),
+      onStatusUpdate: (detail) => {
+        if (detail.toLowerCase().includes('analyzing')) {
+          store.setAgentStatus('analyzing', detail)
+        } else if (detail.toLowerCase().includes('planning')) {
+          store.setAgentStatus('planning', detail)
+        } else if (detail.toLowerCase().includes('generating') || detail.toLowerCase().includes('refining')) {
+          store.setAgentStatus('generating', detail)
+        } else if (detail.toLowerCase().includes('composing')) {
+          store.setAgentStatus('composing', detail)
+        } else if (!detail) {
+          // Keep current status, just clear detail
+        }
+      },
+      onPlanUpdate: (plan) => store.setSheetPlan(plan),
+      onComponentUpdate: (id, update) => store.updateComponent(id, update),
+      onCompose: (characterName) => {
+        store.setCharacterName(characterName)
+        store.triggerCompose(characterName)
+      },
+      onError: (msg) => {
+        store.setAgentStatus('error', msg)
+        store.addMessage('agent', `Error: ${msg}`)
+      },
+      getComponents: () => store.getComponents(),
+    })
+  }, [store.apiKey])
+
+  // React to compositionTrigger
+  useEffect(() => {
+    if (store.compositionTrigger === 0) return
+    const components = store.getComponents()
+    const doneComponents = components.filter((c) => c.status === 'done' && c.imageData)
+    if (doneComponents.length === 0) return
+
+    composeModelSheet(doneComponents, store.characterName)
+      .then((dataUrl) => store.setComposedSheet(dataUrl))
+      .catch(console.error)
+  }, [store.compositionTrigger])
+
+  const isProcessing = store.agentStatus !== 'idle' && store.agentStatus !== 'done' && store.agentStatus !== 'error'
+
+  const handleGenerate = async (url: string) => {
+    store.reset()
+    store.setCharacterUrl(url)
+    store.setAgentStatus('analyzing')
+
+    // Re-init orchestrator after reset
+    orchestratorRef.current = new AgentOrchestrator(store.apiKey, {
+      onChatMessage: (role, text) => store.addMessage(role, text),
+      onStatusUpdate: (detail) => {
+        if (detail.toLowerCase().includes('analyzing')) {
+          store.setAgentStatus('analyzing', detail)
+        } else if (detail.toLowerCase().includes('planning')) {
+          store.setAgentStatus('planning', detail)
+        } else if (detail.toLowerCase().includes('generating') || detail.toLowerCase().includes('refining')) {
+          store.setAgentStatus('generating', detail)
+        } else if (detail.toLowerCase().includes('composing')) {
+          store.setAgentStatus('composing', detail)
+        }
+      },
+      onPlanUpdate: (plan) => store.setSheetPlan(plan),
+      onComponentUpdate: (id, update) => store.updateComponent(id, update),
+      onCompose: (characterName) => {
+        store.setCharacterName(characterName)
+        store.triggerCompose(characterName)
+      },
+      onError: (msg) => {
+        store.setAgentStatus('error', msg)
+        store.addMessage('agent', `Error: ${msg}`)
+      },
+      getComponents: () => store.getComponents(),
+    })
+
+    store.addMessage('user', `Create a model sheet for this character: ${url}`)
+    await orchestratorRef.current.runTurn(
+      `Please create a comprehensive model sheet for the character in this image: ${url}`,
+    )
+  }
+
+  const handleSendMessage = async (message: string) => {
+    if (!orchestratorRef.current) return
+    store.addMessage('user', message)
+    store.setAgentStatus('generating')
+    await orchestratorRef.current.runTurn(message)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      {/* Header */}
+      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-white">Character Model Sheet Generator</h1>
+          <p className="text-xs text-gray-400">AI-powered animation reference tool</p>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem('gemini_api_key')
+            window.location.reload()
+          }}
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          Change API Key
+        </button>
+      </header>
+
+      {/* URL Input */}
+      <div className="border-b border-gray-800 px-6 py-4">
+        <CharacterInput onGenerate={handleGenerate} disabled={isProcessing} />
+      </div>
+
+      {/* Status Bar */}
+      {store.agentStatus !== 'idle' && (
+        <div className="px-6 py-2 border-b border-gray-800">
+          <AgentStatusBar />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left sidebar: chat + components */}
+        <div className="w-80 flex-shrink-0 border-r border-gray-800 flex flex-col p-4 gap-4 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col">
+            <ChatPanel onSendMessage={handleSendMessage} disabled={isProcessing} />
+          </div>
+          <ComponentGrid />
+        </div>
+
+        {/* Main panel: model sheet */}
+        <div className="flex-1 p-6 flex flex-col min-h-0 overflow-auto">
+          <ModelSheetViewer />
+        </div>
+      </div>
+    </div>
+  )
+}
