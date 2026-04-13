@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { useSessionStore } from './store/sessionStore'
-import { AgentOrchestrator } from './agent/orchestrator'
-import { composeModelSheet } from './canvas/sheetComposer'
-import ApiKeyGate from './components/ApiKeyGate'
-import CharacterInput from './components/CharacterInput'
-import AgentStatusBar from './components/AgentStatusBar'
-import ComponentGrid from './components/ComponentGrid'
-import ChatPanel from './components/ChatPanel'
-import ModelSheetViewer from './components/ModelSheetViewer'
+import { useSessionStore } from '../store/sessionStore'
+import { AgentOrchestrator } from '../agent/orchestrator'
+import { composeModelSheet } from '../canvas/sheetComposer'
+import ApiKeyGate from '../components/ApiKeyGate'
+import CharacterInput from '../components/CharacterInput'
+import AgentStatusBar from '../components/AgentStatusBar'
+import ComponentGrid from '../components/ComponentGrid'
+import ChatPanel from '../components/ChatPanel'
+import ModelSheetViewer from '../components/ModelSheetViewer'
 
 export default function App() {
   return (

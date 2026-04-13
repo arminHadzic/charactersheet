@@ -4,4 +4,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/charactersheet/',
+  root: './src',
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
 })
