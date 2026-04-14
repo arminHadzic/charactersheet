@@ -1,7 +1,11 @@
 import type { Config } from 'tailwindcss'
+import { fileURLToPath } from 'url'
+import path from 'path'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default {
-  content: ['./src/**/*.{ts,tsx,html}'],
+  content: [path.resolve(__dirname, '../src/**/*.{ts,tsx,html}')],
   theme: {
     extend: {
       fontFamily: {
