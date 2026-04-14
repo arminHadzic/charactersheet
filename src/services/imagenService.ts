@@ -1,5 +1,5 @@
 const IMAGEN_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict'
+  'https://generativelanguage.googleapis.com/v1/models/imagen-3.0-generate-002:predict'
 
 export async function generateImage(apiKey: string, prompt: string): Promise<string> {
   const response = await fetch(`${IMAGEN_API_URL}?key=${apiKey}`, {
