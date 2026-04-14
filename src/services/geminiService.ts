@@ -5,6 +5,26 @@ import {
   type Tool,
 } from '@google/generative-ai'
 
+const RETRYABLE_STATUS_CODES = [429, 503]
+const MAX_RETRIES = 2
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err
+      const msg = err instanceof Error ? err.message : String(err)
+      const isRetryable = RETRYABLE_STATUS_CODES.some((code) => msg.includes(`[${code}`))
+      if (!isRetryable || attempt === MAX_RETRIES) throw err
+      const delay = Math.min(1000 * 2 ** attempt + Math.random() * 500, 30000)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+  throw lastError
+}
+
 let client: GoogleGenerativeAI | null = null
 
 export function initGemini(apiKey: string) {
@@ -25,14 +45,14 @@ export async function callGeminiWithTools(
   functionCalls: Array<{ name: string; args: Record<string, unknown> }>
 }> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.5-flash-lite',
     systemInstruction: systemPrompt,
     tools: [{ functionDeclarations: tools } as Tool],
   })
 
   const chat = model.startChat({ history: history.slice(0, -1) })
   const lastMessage = history[history.length - 1]
-  const result = await chat.sendMessage(lastMessage.parts)
+  const result = await withRetry(() => chat.sendMessage(lastMessage.parts))
   const response = result.response
 
   const functionCalls =
@@ -52,15 +72,14 @@ export async function analyzeImageWithVision(
   prompt: string,
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
 
   // Pass the URL directly via fileData — Gemini's servers fetch the image,
   // avoiding browser CORS restrictions entirely.
   const mimeType = guessMimeType(imageUrl)
-  const result = await model.generateContent([
-    { fileData: { fileUri: imageUrl, mimeType } },
-    prompt,
-  ])
+  const result = await withRetry(() =>
+    model.generateContent([{ fileData: { fileUri: imageUrl, mimeType } }, prompt]),
+  )
 
   return result.response.text()
 }
