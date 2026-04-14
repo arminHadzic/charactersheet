@@ -1,5 +1,5 @@
 const IMAGEN_API_URL =
-  'https://generativelanguage.googleapis.com/v1/models/imagen-3.0-generate-002:predict'
+  'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict'
 
 export async function generateImage(apiKey: string, prompt: string): Promise<string> {
   const response = await fetch(`${IMAGEN_API_URL}?key=${apiKey}`, {
@@ -10,7 +10,7 @@ export async function generateImage(apiKey: string, prompt: string): Promise<str
       parameters: {
         sampleCount: 1,
         aspectRatio: '1:1',
-        safetyFilterLevel: 'block_some',
+        personGeneration: 'allow_adult',
       },
     }),
   })
