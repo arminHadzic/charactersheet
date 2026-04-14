@@ -5,6 +5,12 @@ import {
   type Tool,
 } from '@google/generative-ai'
 
+export interface ColorSwatchData {
+  hex: string
+  label: string
+  area?: string
+}
+
 export interface ComponentPlan {
   id: string
   type: string
@@ -15,34 +21,48 @@ export interface ComponentPlan {
 export interface SheetAnalysis {
   characterName: string
   summary: string
+  artStyle: string
+  characterDescription: string
+  colorPalette: ColorSwatchData[]
   components: ComponentPlan[]
 }
 
-// One-shot template prompt: single Gemini call returns everything needed
-// to generate the full sheet without any follow-up calls.
-const SHEET_TEMPLATE_PROMPT = `You are an animation director. Analyze the character image and return ONLY a JSON object — no markdown, no explanation, no code fences.
+// One-shot template: single Gemini call returns a detailed character description
+// (used as consistent context in every Imagen prompt) + per-component prompts.
+// Color palette is excluded — generated from canvas using extracted hex colors.
+const SHEET_TEMPLATE_PROMPT = `You are an animation character artist. Analyze the reference image carefully and return ONLY valid JSON — no markdown, no explanation, no code fences.
 
 {
-  "characterName": "name or 'Character'",
-  "summary": "one friendly sentence describing what you see",
+  "characterName": "character name if recognizable, otherwise 'Character'",
+  "summary": "one enthusiastic sentence describing the character for the user",
+  "artStyle": "precise style descriptor, e.g. 'western cartoon with bold black outlines, flat cel-shaded colors, exaggerated proportions'",
+  "characterDescription": "Dense single-paragraph visual description for image consistency. Include every detail: exact body proportions and build, skin/fur/scale color with descriptors, hair or head features, eye shape and color, nose/mouth, all clothing items with exact colors, footwear, accessories, any distinctive markings or unique features. This will be copied verbatim into every image generation prompt.",
+  "colorPalette": [
+    {"hex": "#RRGGBB", "label": "Short name", "area": "where this color appears"}
+  ],
   "components": [
-    {"id":"front_view",         "type":"front_view",         "label":"Front View",      "prompt":""},
-    {"id":"three_quarter_view", "type":"three_quarter_view", "label":"3/4 View",        "prompt":""},
-    {"id":"expression_sheet",   "type":"expression_sheet",   "label":"Expressions",     "prompt":""},
-    {"id":"action_pose",        "type":"action_pose",        "label":"Signature Pose",  "prompt":""},
-    {"id":"color_palette",      "type":"color_palette",      "label":"Color Reference", "prompt":""},
-    {"id":"back_view",          "type":"back_view",          "label":"Back View",       "prompt":""}
+    {"id":"front_view",         "type":"front_view",         "label":"Front View",     "prompt":""},
+    {"id":"three_quarter_view", "type":"three_quarter_view", "label":"3/4 View",       "prompt":""},
+    {"id":"expression_sheet",   "type":"expression_sheet",   "label":"Expressions",    "prompt":""},
+    {"id":"action_pose",        "type":"action_pose",        "label":"Signature Pose", "prompt":""},
+    {"id":"back_view",          "type":"back_view",          "label":"Back View",      "prompt":""}
   ]
 }
 
-For each prompt field: start with the prefix below, then append the character's specific visual details (colors, clothing, face, distinctive features). Keep each prompt under 400 characters.
+Build each component prompt using this exact template:
+"[artStyle] illustration. [characterDescription]. [VIEW INSTRUCTION]. White background. No scenery."
 
-front_view: "Animation model sheet — full body front view, neutral pose, white background, clean line art."
-three_quarter_view: "Animation model sheet — full body 3/4 angle view, slight right turn, white background, clean line art."
-expression_sheet: "Animation model sheet — 6 facial expressions in 2x3 grid (happy/sad/angry/surprised/scared/determined), white background."
-action_pose: "Animation model sheet — full body dynamic action pose revealing character personality, white background, clean line art."
-color_palette: "Animation model sheet — character in flat color with annotated color swatches pointing to each area, white background."
-back_view: "Animation model sheet — full body back view, neutral pose, white background, clean line art."`
+VIEW INSTRUCTIONS — use these exactly:
+- front_view: "Full body, facing directly toward viewer, neutral standing pose, arms relaxed at sides. Single character, single pose only."
+- three_quarter_view: "Full body, body angled 45 degrees right, face turned toward viewer, neutral standing pose. Single character, single pose only."
+- expression_sheet: "Six facial close-up portraits in a 2x3 grid, labeled: Happy, Sad, Angry, Surprised, Scared, Determined. Head and bust only, no full body, no repeated full-body poses."
+- action_pose: "Full body, one single dynamic pose expressing this character's personality. One character, one pose only. No duplicate figures."
+- back_view: "Full body, facing directly away from viewer, neutral standing pose, arms relaxed. Single character, single pose only."
+
+Rules:
+- characterDescription must be IDENTICAL text in all 5 prompts
+- Keep each total prompt under 480 characters
+- Extract 5–8 key colors for colorPalette`
 
 export async function analyzeAndPlanSheet(apiKey: string, imageUrl: string): Promise<SheetAnalysis> {
   const genAI = new GoogleGenerativeAI(apiKey)

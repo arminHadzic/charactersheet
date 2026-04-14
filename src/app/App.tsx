@@ -4,8 +4,8 @@ import { AgentOrchestrator } from '../agent/orchestrator'
 import { analyzeAndPlanSheet } from '../services/geminiService'
 import { generateImage } from '../services/imagenService'
 import { composeModelSheet } from '../canvas/sheetComposer'
-import type { SheetPlan } from '../agent/types'
-import type { ComponentType } from '../agent/types'
+import { generateColorPaletteImage } from '../canvas/colorPaletteCanvas'
+import type { SheetPlan, SheetComponent, ComponentType } from '../agent/types'
 import ApiKeyGate from '../components/ApiKeyGate'
 import CharacterInput from '../components/CharacterInput'
 import AgentStatusBar from '../components/AgentStatusBar'
@@ -114,21 +114,34 @@ function MainApp() {
     store.addMessage('agent', analysis.summary)
     store.setCharacterName(analysis.characterName)
 
-    // Step 2: register all components as pending
+    // Step 2: build color palette component immediately from extracted colors (no Imagen needed)
+    const colorPaletteComponent: SheetComponent = {
+      id: 'color_palette',
+      type: 'color_palette' as ComponentType,
+      label: 'Color Palette',
+      generationPrompt: '',
+      status: 'done',
+      imageData: generateColorPaletteImage(analysis.colorPalette, analysis.characterName),
+    }
+
+    // Register all components — Imagen ones as pending, color palette already done
     const plan: SheetPlan = {
       characterName: analysis.characterName,
-      components: analysis.components.map((c) => ({
-        id: c.id,
-        type: c.type as ComponentType,
-        label: c.label,
-        generationPrompt: c.prompt,
-        status: 'pending' as const,
-      })),
+      components: [
+        ...analysis.components.map((c) => ({
+          id: c.id,
+          type: c.type as ComponentType,
+          label: c.label,
+          generationPrompt: c.prompt,
+          status: 'pending' as const,
+        })),
+        colorPaletteComponent,
+      ],
       layoutPreference: 'grid',
     }
     store.setSheetPlan(plan)
 
-    // Step 3: generate all components in parallel
+    // Step 3: generate all Imagen components in parallel
     const total = analysis.components.length
     let doneCount = 0
     store.setAgentStatus('generating', `Generating components: 0/${total}`)
