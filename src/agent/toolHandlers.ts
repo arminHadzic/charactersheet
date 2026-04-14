@@ -99,7 +99,7 @@ export async function handlePlanSheetComponents(
   }
 
   // Color palette for colorful characters
-  if (targetCount >= 5 && args.character_profile.colorPalette.length > 0) {
+  if (targetCount >= 5 && (args.character_profile.colorPalette?.length ?? 0) > 0) {
     components.push({
       id: 'color_palette',
       type: 'color_palette',
@@ -223,7 +223,7 @@ function buildComponentPrompt(
 ): string {
   const prefix = STYLE_PREFIXES[type]
   const styleDesc = `Art style: ${profile.artStyle}. `
-  const attrDesc = profile.attributes.length
+  const attrDesc = profile.attributes?.length
     ? `Character attributes: ${profile.attributes.slice(0, 4).join(', ')}. `
     : ''
   const consistency = profile.consistencyNotes
