@@ -1,13 +1,18 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSessionStore } from '../store/sessionStore'
 import { AgentOrchestrator } from '../agent/orchestrator'
 import { composeModelSheet } from '../canvas/sheetComposer'
+import { generateImage } from '../services/imagenService'
 import ApiKeyGate from '../components/ApiKeyGate'
 import CharacterInput from '../components/CharacterInput'
 import AgentStatusBar from '../components/AgentStatusBar'
 import ComponentGrid from '../components/ComponentGrid'
 import ChatPanel from '../components/ChatPanel'
 import ModelSheetViewer from '../components/ModelSheetViewer'
+
+const IMAGEN_DEMO_PROMPT =
+  'Invader Zim, cartoon alien character with green skin, magenta eyes, and black uniform with pink stripes, ' +
+  'full body front view standing upright, white background, animation model sheet style, clean linework'
 
 export default function App() {
   return (
@@ -20,6 +25,25 @@ export default function App() {
 function MainApp() {
   const store = useSessionStore()
   const orchestratorRef = useRef<AgentOrchestrator | null>(null)
+  const [demoStatus, setDemoStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [demoImageUrl, setDemoImageUrl] = useState<string | null>(null)
+  const [demoError, setDemoError] = useState<string | null>(null)
+
+  const handleImagenDemo = async () => {
+    if (!store.apiKey) return
+    setDemoStatus('loading')
+    setDemoImageUrl(null)
+    setDemoError(null)
+    try {
+      const dataUrl = await generateImage(store.apiKey, IMAGEN_DEMO_PROMPT)
+      setDemoImageUrl(dataUrl)
+      setDemoStatus('done')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setDemoError(msg)
+      setDemoStatus('error')
+    }
+  }
 
   // Initialize orchestrator when API key is available
   useEffect(() => {
@@ -133,21 +157,46 @@ function MainApp() {
           <h1 className="text-lg font-bold text-white">Character Model Sheet Generator</h1>
           <p className="text-xs text-gray-400">AI-powered animation reference tool</p>
         </div>
-        <button
-          onClick={() => {
-            localStorage.removeItem('gemini_api_key')
-            window.location.reload()
-          }}
-          className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-        >
-          Change API Key
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleImagenDemo}
+            disabled={demoStatus === 'loading'}
+            className="text-xs bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded transition-colors"
+          >
+            {demoStatus === 'loading' ? 'Running Imagen demo...' : 'Imagen Demo Test'}
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem('gemini_api_key')
+              window.location.reload()
+            }}
+            className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Change API Key
+          </button>
+        </div>
       </header>
 
       {/* URL Input */}
       <div className="border-b border-gray-800 px-6 py-4">
         <CharacterInput onGenerate={handleGenerate} disabled={isProcessing} />
       </div>
+
+      {/* Imagen Demo Result */}
+      {demoStatus !== 'idle' && (
+        <div className="border-b border-gray-800 px-6 py-4 bg-gray-900">
+          <p className="text-xs font-semibold text-indigo-400 mb-2">Imagen Demo (no Gemini involved)</p>
+          {demoStatus === 'loading' && (
+            <p className="text-xs text-gray-400">Sending request to Imagen 3...</p>
+          )}
+          {demoStatus === 'error' && (
+            <p className="text-xs text-red-400">Error: {demoError}</p>
+          )}
+          {demoStatus === 'done' && demoImageUrl && (
+            <img src={demoImageUrl} alt="Imagen demo output" className="max-h-64 rounded border border-gray-700" />
+          )}
+        </div>
+      )}
 
       {/* Status Bar */}
       {store.agentStatus !== 'idle' && (
