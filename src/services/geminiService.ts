@@ -6,7 +6,7 @@ import {
 } from '@google/generative-ai'
 
 const RETRYABLE_STATUS_CODES = [429, 503]
-const MAX_RETRIES = 2
+const MAX_RETRIES = 4
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   let lastError: unknown
@@ -45,7 +45,7 @@ export async function callGeminiWithTools(
   functionCalls: Array<{ name: string; args: Record<string, unknown> }>
 }> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools: [{ functionDeclarations: tools } as Tool],
   })
@@ -72,7 +72,7 @@ export async function analyzeImageWithVision(
   prompt: string,
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Pass the URL directly via fileData — Gemini's servers fetch the image,
   // avoiding browser CORS restrictions entirely.
