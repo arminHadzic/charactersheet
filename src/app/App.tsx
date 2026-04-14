@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSessionStore } from '../store/sessionStore'
 import { AgentOrchestrator } from '../agent/orchestrator'
-import { composeModelSheet } from '../canvas/sheetComposer'
+import { analyzeAndPlanSheet } from '../services/geminiService'
 import { generateImage } from '../services/imagenService'
+import { composeModelSheet } from '../canvas/sheetComposer'
+import type { SheetPlan } from '../agent/types'
+import type { ComponentType } from '../agent/types'
 import ApiKeyGate from '../components/ApiKeyGate'
 import CharacterInput from '../components/CharacterInput'
 import AgentStatusBar from '../components/AgentStatusBar'
@@ -95,45 +98,57 @@ function MainApp() {
   const handleGenerate = async (url: string) => {
     store.reset()
     store.setCharacterUrl(url)
-    store.setAgentStatus('analyzing')
+    store.setAgentStatus('analyzing', 'Reading character image...')
 
-    // Re-init orchestrator after reset
-    orchestratorRef.current = new AgentOrchestrator(store.apiKey, {
-      onChatMessage: (role, text) => store.addMessage(role, text),
-      onStatusUpdate: (detail) => {
-        if (detail.toLowerCase().includes('analyzing')) {
-          store.setAgentStatus('analyzing', detail)
-        } else if (detail.toLowerCase().includes('planning')) {
-          store.setAgentStatus('planning', detail)
-        } else if (detail.toLowerCase().includes('generating') || detail.toLowerCase().includes('refining')) {
-          store.setAgentStatus('generating', detail)
-        } else if (detail.toLowerCase().includes('composing')) {
-          store.setAgentStatus('composing', detail)
-        }
-      },
-      onPlanUpdate: (plan) => store.setSheetPlan(plan),
-      onComponentUpdate: (id, update) => store.updateComponent(id, update),
-      onCompose: (characterName) => {
-        store.setCharacterName(characterName)
-        store.triggerCompose(characterName)
-      },
-      onError: (msg) => {
-        store.setAgentStatus('error', msg)
-        store.addMessage('agent', `Error: ${msg}`)
-      },
-      getComponents: () => store.getComponents(),
-    })
-
-    store.addMessage('user', `Create a model sheet for this character: ${url}`)
+    // Step 1: single Gemini call — analyze image + get all component prompts
+    let analysis: Awaited<ReturnType<typeof analyzeAndPlanSheet>>
     try {
-      await orchestratorRef.current.runTurn(
-        `Please create a comprehensive model sheet for the character in this image: ${url}`,
-      )
+      analysis = await analyzeAndPlanSheet(store.apiKey, url)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       store.setAgentStatus('error', msg)
       store.addMessage('agent', `Error: ${msg}`)
+      return
     }
+
+    store.addMessage('agent', analysis.summary)
+    store.setCharacterName(analysis.characterName)
+
+    // Step 2: register all components as pending
+    const plan: SheetPlan = {
+      characterName: analysis.characterName,
+      components: analysis.components.map((c) => ({
+        id: c.id,
+        type: c.type as ComponentType,
+        label: c.label,
+        generationPrompt: c.prompt,
+        status: 'pending' as const,
+      })),
+      layoutPreference: 'grid',
+    }
+    store.setSheetPlan(plan)
+
+    // Step 3: generate all components in parallel
+    const total = analysis.components.length
+    let doneCount = 0
+    store.setAgentStatus('generating', `Generating components: 0/${total}`)
+
+    await Promise.allSettled(
+      analysis.components.map(async (c) => {
+        store.updateComponent(c.id, { status: 'generating' })
+        try {
+          const imageData = await generateImage(store.apiKey, c.prompt)
+          store.updateComponent(c.id, { status: 'done', imageData })
+          doneCount++
+          store.setAgentStatus('generating', `Generating components: ${doneCount}/${total}`)
+        } catch (err) {
+          store.updateComponent(c.id, { status: 'error' })
+        }
+      }),
+    )
+
+    // Step 4: compose
+    store.triggerCompose(analysis.characterName)
   }
 
   const handleSendMessage = async (message: string) => {
