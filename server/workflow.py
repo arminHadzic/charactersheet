@@ -88,35 +88,24 @@ class RateLimitException(Exception):
     retry=retry_if_exception_type(RateLimitException)
 )
 async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref_b64: str):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:predict?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
     payload = {
-        "instances": [{
-            "prompt": prompt,
-            "referenceImages": [
-                {
-                    "referenceType": "REFERENCE_TYPE_SUBJECT",
-                    "referenceId": 1,
-                    "referenceImage": {
-                        "bytesBase64Encoded": ref_b64
-                    },
-                    "subjectImageConfig": {
-                        "subjectType": "SUBJECT_TYPE_DEFAULT"
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inlineData": {
+                            "mimeType": "image/png",
+                            "data": ref_b64
+                        }
                     }
-                },
-                {
-                    "referenceType": "REFERENCE_TYPE_STYLE",
-                    "referenceId": 2,
-                    "referenceImage": {
-                        "bytesBase64Encoded": ref_b64
-                    },
-                    "styleImageConfig": {}
-                }
-            ]
-        }],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "1:1",
-            "personGeneration": "allow_adult"
+                ]
+            }
+        ],
+        "generationConfig": {
+            "responseModalities": ["IMAGE"]
         }
     }
     
@@ -127,10 +116,13 @@ async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref
         raise Exception(f"HTTP {resp.status_code}: {resp.text}")
     data = resp.json()
     try:
-        b64_out = data["predictions"][0]["bytesBase64Encoded"]
+        if "predictions" in data:
+            b64_out = data["predictions"][0]["bytesBase64Encoded"]
+        else:
+            b64_out = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
         return b64_out
     except (KeyError, IndexError):
-        raise Exception("Invalid Imagen output format: " + str(data))
+        raise Exception("Invalid output format: " + str(data))
 
 
 async def generate_components(state: AgentState):
