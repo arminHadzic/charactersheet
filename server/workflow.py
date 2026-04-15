@@ -91,21 +91,7 @@ async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key={api_key}"
     payload = {
         "instances": [{
-            "prompt": prompt,
-            "referenceImages": [
-                {
-                    "referenceType": "REFERENCE_TYPE_SUBJECT",
-                    "referenceId": 1,
-                    "referenceImage": {"bytesBase64Encoded": ref_b64},
-                    "subjectImageConfig": {"subjectType": "SUBJECT_TYPE_DEFAULT"}
-                },
-                {
-                    "referenceType": "REFERENCE_TYPE_STYLE",
-                    "referenceId": 2,
-                    "referenceImage": {"bytesBase64Encoded": ref_b64},
-                    "styleImageConfig": {}
-                }
-            ]
+            "prompt": prompt
         }],
         "parameters": {
             "sampleCount": 1,
@@ -117,7 +103,8 @@ async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref
     resp = await client.post(url, json=payload, timeout=60.0)
     if resp.status_code == 429:
         raise RateLimitException("429 Too Many Requests")
-    resp.raise_for_status()
+    if not resp.is_success:
+        raise Exception(f"HTTP {resp.status_code}: {resp.text}")
     data = resp.json()
     try:
         b64_out = data["predictions"][0]["bytesBase64Encoded"]
