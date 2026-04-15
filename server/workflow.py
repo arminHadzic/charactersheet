@@ -15,8 +15,8 @@ STYLE_PREFIXES = {
     "front_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Front view (facing viewer), neutral standing pose, clean line art. {PURE_WHITE_BG}",
     "three_quarter_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. 3/4 angle view, slight turn to the right, neutral pose. {PURE_WHITE_BG}",
     "back_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Back view, character facing directly away from viewer, back of head only, face NOT visible, neutral standing pose. {PURE_WHITE_BG}",
-    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE HEADS in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). CRITICAL: Ensure ALL 6 HEADS strictly maintain the exact same eye shape and pupil design as the reference image. Do not use generic eyes. {PURE_WHITE_BG}",
-    "action_pose": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Dynamic signature action pose that reveals the character's personality. {PURE_WHITE_BG}",
+    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE HEADS in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). CRITICAL: Ensure ALL 6 HEADS strictly maintain the EXACT same anatomy as the reference image (e.g. correct EXACT number of antennae on EVERY head, correct eye geometric shape). Do not use generic eyes. {PURE_WHITE_BG}",
+    "action_pose": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Dynamic signature action pose that reveals the character's personality. CRITICAL: Ensure the eyes and anatomy still EXACTLY match the reference image's geometry even in a dynamic pose. {PURE_WHITE_BG}",
     "color_palette": f"Animation model sheet — COLOR PALETTE CHART. Draw a clean, organized grid of square color swatches representing every major color used in this character's design. Do not draw the character, ONLY draw the color swatches with clean borders. {PURE_WHITE_BG}"
 }
 
@@ -31,12 +31,13 @@ class AgentState(TypedDict):
 
 async def extract_vision(state: AgentState):
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=state["api_key"])
-    prompt = """Analyze this character image carefully. Extract style, colors, and attributes.
+    prompt = """Analyze this character image carefully. Extract style, colors, and specific anatomical attributes.
 Return exactly a JSON object with these fields, nothing else:
 {
   "artStyle": "description of art style (e.g., anime, western cartoon, pixel art)",
   "colorPalette": [{"hex": "#RRGGBB", "label": "color name/usage"}],
   "attributes": ["1-3 character attributes and personality traits"],
+  "anatomy": "EXACT physical description of their face/head, number of eyes, type of eyes (pupils or solid colors?), number of ears/antennae. BE EXTREMELY PRECISE (e.g. 'Has exactly 2 tall antennae, 2 large solid magenta eyes with no white sclera/pupils').",
   "consistencyNotes": "key visual rules to maintain across all drawings"
 }"""
     msg = HumanMessage(content=[
@@ -58,7 +59,7 @@ Return exactly a JSON object with these fields, nothing else:
             pass
             
     if not parsed_json:
-        parsed_json = {"artStyle": "", "colorPalette": [], "attributes": [], "consistencyNotes": ""}
+        parsed_json = {"artStyle": "", "colorPalette": [], "attributes": [], "anatomy": "", "consistencyNotes": ""}
         
     return {"vision_extraction": parsed_json}
 
@@ -69,6 +70,7 @@ async def lock_constraints(state: AgentState):
     
     styleDesc = f"Art style: {profile.get('artStyle', '')}. " if profile.get('artStyle') else ""
     attrDesc = f"Character attributes: {', '.join(profile.get('attributes', [])[:4])}. " if profile.get('attributes') else ""
+    anatomyDesc = f"CRITICAL ANATOMY RULES: {profile.get('anatomy', '')}. YOU MUST FOLLOW THESE ANATOMY RULES EXACTLY. " if profile.get('anatomy') else ""
     consistency = f"Consistency rules: {profile.get('consistencyNotes', '')}. " if profile.get('consistencyNotes') else ""
     
     colors = profile.get('colorPalette', [])
@@ -76,7 +78,7 @@ async def lock_constraints(state: AgentState):
     colorsText = f"COLOR PALETTE (MUST STRICTLY USE THESE COLORS): {colorStr}. " if colorStr else ""
     prefStr = f"User notes: {prefs}. " if prefs else ""
     
-    constraint = f"{styleDesc}{attrDesc}{consistency}{colorsText}{prefStr}Professional animation studio quality."
+    constraint = f"{styleDesc}{attrDesc}{anatomyDesc}{consistency}{colorsText}{prefStr}Professional animation studio quality."
     return {"locked_constraint": constraint}
 
 
