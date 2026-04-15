@@ -121,7 +121,7 @@ function MainApp() {
         <div className="w-80 flex-shrink-0 border-r border-gray-800 flex flex-col p-4 bg-gray-900 overflow-y-auto">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Reference Image</h2>
           {referenceImageDataUrl ? (
-            <img src={referenceImageDataUrl} alt="Reference" className="w-full rounded-md shadow-md border border-gray-700" />
+            <img src={referenceImageDataUrl} alt="Reference" className="w-full rounded-md shadow-md border border-gray-700 bg-white" />
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-600 text-xs italic text-center p-4">
                {isProcessing ? "Loading reference image..." : "No reference image active. Paste a URL and click Generate."}
