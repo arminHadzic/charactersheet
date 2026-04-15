@@ -1,4 +1,3 @@
-import { fetchImageAsBase64 } from './imagenService'
 
 interface GeneratePayload {
   apiKey: string
