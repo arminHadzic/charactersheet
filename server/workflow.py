@@ -86,7 +86,7 @@ class RateLimitException(Exception):
 @retry(
     wait=wait_exponential(multiplier=2, min=4, max=60), 
     stop=stop_after_attempt(5),
-    retry=retry_if_exception_type(RateLimitException)
+    retry=retry_if_exception_type((RateLimitException, httpx.TimeoutException, Exception))
 )
 async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref_b64: str):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
@@ -110,11 +110,15 @@ async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref
         }
     }
     
-    resp = await client.post(url, json=payload, timeout=60.0)
+    resp = await client.post(url, json=payload, timeout=90.0)
     if resp.status_code == 429:
         raise RateLimitException("429 Too Many Requests")
+    if resp.status_code >= 500:
+        raise Exception(f"Server Error {resp.status_code}: {resp.text}")
     if not resp.is_success:
-        raise Exception(f"HTTP {resp.status_code}: {resp.text}")
+        # Don't retry on 400 Bad Request, we want those to fail immediately so we can fix them.
+        raise ValueError(f"HTTP {resp.status_code}: {resp.text}")
+        
     data = resp.json()
     try:
         if "predictions" in data:
@@ -123,7 +127,7 @@ async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref
             b64_out = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
         return b64_out
     except (KeyError, IndexError):
-        raise Exception("Invalid output format: " + str(data))
+        raise ValueError("Invalid output format: " + str(data))
 
 
 async def generate_components(state: AgentState):
@@ -143,7 +147,7 @@ async def generate_components(state: AgentState):
         
         for k, res in zip(keys, results):
             if isinstance(res, Exception):
-                print(f"Failed to generate {k}: {res}")
+                print(f"Failed to generate {k}: {repr(res)}")
             else:
                 comps.append({
                     "id": k,
