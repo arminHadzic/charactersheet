@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSessionStore } from '../store/sessionStore'
 import { AgentOrchestrator } from '../agent/orchestrator'
 import { analyzeAndPlanSheet } from '../services/geminiService'
-import { generateImage } from '../services/imagenService'
+import { generateImage, fetchImageAsBase64 } from '../services/imagenService'
 import { composeModelSheet } from '../canvas/sheetComposer'
 import { generateColorPaletteImage } from '../canvas/colorPaletteCanvas'
 import type { SheetPlan, SheetComponent, ComponentType } from '../agent/types'
@@ -141,7 +141,10 @@ function MainApp() {
     }
     store.setSheetPlan(plan)
 
-    // Step 3: generate all Imagen components in parallel
+    // Step 3: try to fetch reference image as base64 for Imagen subject conditioning
+    const referenceBase64 = await fetchImageAsBase64(url)
+
+    // Step 4: generate all Imagen components in parallel
     const total = analysis.components.length
     let doneCount = 0
     store.setAgentStatus('generating', `Generating components: 0/${total}`)
@@ -150,7 +153,7 @@ function MainApp() {
       analysis.components.map(async (c) => {
         store.updateComponent(c.id, { status: 'generating' })
         try {
-          const imageData = await generateImage(store.apiKey, c.prompt)
+          const imageData = await generateImage(store.apiKey, c.prompt, referenceBase64)
           store.updateComponent(c.id, { status: 'done', imageData })
           doneCount++
           store.setAgentStatus('generating', `Generating components: ${doneCount}/${total}`)
@@ -160,7 +163,7 @@ function MainApp() {
       }),
     )
 
-    // Step 4: compose
+    // Step 5: compose
     store.triggerCompose(analysis.characterName)
   }
 

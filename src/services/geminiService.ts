@@ -53,11 +53,11 @@ Build each component prompt using this exact template:
 "[artStyle] illustration. [characterDescription]. [VIEW INSTRUCTION]. White background. No scenery."
 
 VIEW INSTRUCTIONS — use these exactly:
-- front_view: "Full body, facing directly toward viewer, neutral standing pose, arms relaxed at sides. Single character, single pose only."
-- three_quarter_view: "Full body, body angled 45 degrees right, face turned toward viewer, neutral standing pose. Single character, single pose only."
+- front_view: "Full body, facing directly toward viewer, neutral standing pose, arms relaxed at sides, character fills ~85% of image height. Single character, single pose only."
+- three_quarter_view: "Full body, body angled 45 degrees right, face turned toward viewer, neutral standing pose, character fills ~85% of image height. Single character, single pose only."
 - expression_sheet: "Six facial close-up portraits in a 2x3 grid, labeled: Happy, Sad, Angry, Surprised, Scared, Determined. Head and bust only, no full body, no repeated full-body poses."
-- action_pose: "Full body, one single dynamic pose expressing this character's personality. One character, one pose only. No duplicate figures."
-- back_view: "Full body, facing directly away from viewer, neutral standing pose, arms relaxed. Single character, single pose only."
+- action_pose: "Full body, one single dynamic pose expressing this character's personality, character fills ~85% of image height. One character, one pose only. No duplicate figures."
+- back_view: "Full body, character facing directly away from viewer — back of head and back of body only, face is NOT visible, no face shown at all, neutral standing pose, arms relaxed, character fills ~85% of image height. Single character, single pose only."
 
 Rules:
 - characterDescription must be IDENTICAL text in all 5 prompts
