@@ -28,7 +28,7 @@ class AgentState(TypedDict):
     locked_constraint: str
     components: List[Dict[str, str]]
 
-def extract_vision(state: AgentState):
+async def extract_vision(state: AgentState):
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=state["api_key"])
     prompt = """Analyze this character image carefully. Extract style, colors, and attributes.
 Return exactly a JSON object with these fields, nothing else:
@@ -43,7 +43,7 @@ Return exactly a JSON object with these fields, nothing else:
         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{state['reference_image_b64']}"}}
     ])
     
-    res = llm.invoke([msg])
+    res = await llm.ainvoke([msg])
     
     text = res.content
     # Remove markdown codeblocks
@@ -62,7 +62,7 @@ Return exactly a JSON object with these fields, nothing else:
     return {"vision_extraction": parsed_json}
 
 
-def lock_constraints(state: AgentState):
+async def lock_constraints(state: AgentState):
     profile = state.get("vision_extraction", {})
     prefs = state.get("user_preferences", "")
     
