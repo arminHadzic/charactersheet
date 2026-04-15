@@ -1,15 +1,10 @@
-# canvas
+# Canvas Composition
 
-This is the image composition layer. It assembles the individual component images produced by Imagen 3 into a single, print-ready model sheet.
+This directory contains the HTML5 Canvas logic required to stitch the individual generated components into a single, cohesive image file (the final model sheet).
 
-## What it does
+**What it does:**
+After the Python backend finishes generating the various individual poses and expressions for a character, it returns a list of Base64 images. The `sheetComposer.ts` utility programmatically creates a 2D canvas, draws a structured background layout (headers, footers, pure white component slots), scales the incoming images appropriately, and paints them into a unified "Model Sheet". `colorPaletteCanvas.ts` may also be used to draw color swatch metadata directly onto an image.
 
-`sheetComposer.ts` exports one function, `composeModelSheet`. It creates an off-screen HTML `<canvas>` at A3 landscape resolution (2480 × 1754 px), draws a background, an outer border, and a header bar with the character name and a generation timestamp, then lays the component images out in a responsive grid that fills the available area. Each image gets a label beneath it. After all images are placed, it adds a thin footer line and returns the finished canvas as a base64 PNG data URL, which the store saves and `ModelSheetViewer` displays.
-
-## Why we have it
-
-The final model sheet needs to be a single, shareable image rather than a grid of separate tiles. Browser Canvas 2D is well-suited for this: it runs entirely client-side with no server round-trip, can produce high-resolution output, and gives precise control over layout and typography. Isolating this logic in its own subdirectory keeps image-manipulation concerns out of both the agent and the UI.
-
-## Dependencies
-
-- **`../agent`** — consumes `SheetComponent` types (specifically the `imageData` base64 strings and `label` fields produced by the agent's tool handlers)
+**Dependencies:**
+- Connected to `App.tsx` which triggers it when all component payloads arrive.
+- It is purely functional and has no external library dependencies besides native browser `Canvas API`.

@@ -1,26 +1,14 @@
-# components
+# React Components
 
-This directory contains all React UI components. Each file is a self-contained widget that reads from the session store and/or receives props from `App.tsx`.
+This directory contains the encapsulated, reusable presentational and interactive pieces of the application interface.
 
-## What's in here
+**What it does:**
+It houses all the UI widgets that the user interacts with. For example:
+- `ApiKeyGate.tsx`: Protects access to the application by asking for a Gemini API key.
+- `CharacterInput.tsx`: The primary text and URL input fields to capture user generation constraints.
+- `AgentStatusBar.tsx`: A visual indicator reflecting the current processing steps running on the backend.
+- `ModelSheetViewer.tsx`: The display component rendering the fully composed model sheet canvas to the user after generation finishes.
 
-`ApiKeyGate.tsx` — renders a full-screen prompt asking for a Google AI Studio API key the first time the app loads. Once a key is entered it is persisted to `localStorage` and this gate renders its children instead.
-
-`CharacterInput.tsx` — the URL input bar at the top of the screen. Accepts a character image URL and calls the `onGenerate` callback when the user submits.
-
-`AgentStatusBar.tsx` — a thin bar that shows the current agent status (analyzing / planning / generating / composing / done / error) and a human-readable detail string. Visible only while a generation run is in progress.
-
-`ChatPanel.tsx` — the scrolling conversation log on the left sidebar. Displays alternating user and agent messages and includes a text input for sending follow-up requests to the agent after the initial sheet is generated.
-
-`ComponentGrid.tsx` — a compact grid below the chat panel showing the status of each sheet component (pending, generating, done, error) as small thumbnail tiles with labels.
-
-`ModelSheetViewer.tsx` — the large central panel. Displays the composed model sheet image once it is ready, with a download button. Shows an empty state prompt before generation starts.
-
-## Why we have it
-
-Separating UI components from business logic (the agent, store, and services) keeps each component focused on presentation. Components only know how to display data and fire callbacks — they do not call AI APIs or manage state directly.
-
-## Dependencies
-
-- **`../store`** — most components read agent status, messages, sheet plan, and composed sheet URL via `useSessionStore`
-- **`../agent`** — `AgentStatusBar` and `ComponentGrid` consume `AgentStatus` and `SheetComponent` types
+**Dependencies:**
+- Connected to `store/sessionStore.ts` to read globally reactive state variables (such as the loading status or the current image payload).
+- Connected to standard React hooks (`useState`, `useEffect`).
