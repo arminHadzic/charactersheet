@@ -76,19 +76,6 @@ export async function composeModelSheet(
         img.onload = () => {
           const { dx, dy, dw, dh } = containFit(img.width, img.height, w, h)
           ctx.drawImage(img, x + dx, y + dy, dw, dh)
-
-          // Only label the color palette cell
-          if (comp.type === 'color_palette') {
-            ctx.fillStyle = 'rgba(26,26,26,0.7)'
-            ctx.fillRect(x, y + h - 38, w, 38)
-            ctx.fillStyle = '#FFFFFF'
-            ctx.font = 'bold 22px Inter, system-ui, sans-serif'
-            ctx.textBaseline = 'middle'
-            ctx.textAlign = 'center'
-            ctx.fillText(comp.label, x + w / 2, y + h - 19)
-            ctx.textAlign = 'left'
-          }
-
           resolve()
         }
         img.onerror = () => resolve()

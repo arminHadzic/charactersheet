@@ -5,6 +5,9 @@ import {
   type Tool,
 } from '@google/generative-ai'
 
+import type { CharacterSchema } from '../agent/characterSchema'
+import { buildComponentPromptsFromSchema } from '../agent/promptBuilder'
+
 export interface ColorSwatchData {
   hex: string
   label: string
@@ -22,70 +25,97 @@ export interface SheetAnalysis {
   characterName: string
   summary: string
   artStyle: string
-  lineworkStyle?: string
-  proportionNotes?: string
-  mustPreserveFeatures?: string[]
-  characterDescription: string
   colorPalette: ColorSwatchData[]
   components: ComponentPlan[]
 }
 
-// One-shot template: single Gemini call returns a detailed character description
-// (used as consistent context in every Imagen prompt) + per-component prompts.
-// Color palette is excluded — generated from canvas using extracted hex colors.
-const SHEET_TEMPLATE_PROMPT = `You are an animation character artist. Analyze the reference image carefully and return ONLY valid JSON — no markdown, no explanation, no code fences.
+// ---------------------------------------------------------------------------
+// Vision extraction prompt — focused purely on filling the CharacterSchema.
+// No prompt-building happens here; that is done deterministically in TypeScript
+// by promptBuilder.ts once we have the structured data.
+// ---------------------------------------------------------------------------
+const SCHEMA_EXTRACTION_PROMPT = `You are a professional animation character analyst. Study the reference image with extreme care and extract a precise, structured description. Return ONLY valid JSON matching the schema below — no markdown, no explanation, no code fences.
 
 {
-  "characterName": "character name if recognizable, otherwise 'Character'",
-  "summary": "one enthusiastic sentence describing the character for the user",
-  "artStyle": "precise studio-level style descriptor capturing the EXACT look: line weight (thick/thin/variable), shading method (flat cel-shading/gradients/painterly), shape vocabulary (angular/rounded/geometric), and overall aesthetic. E.g. 'Jhonen Vasquez western cartoon: very thick uniform black outlines, flat cel-shaded fills with no gradients, angular geometric shapes, high-contrast pure colors, exaggerated gothic proportions'",
-  "lineworkStyle": "Describe outline and rendering precisely so an artist could replicate it. E.g. 'thick uniform black outlines (~4px equivalent), flat color fills, pure black for shadows, zero gradients or soft shading, bold high-contrast palette'",
-  "proportionNotes": "List every exaggerated proportion explicitly. E.g. 'head is ~40% of total body height and very angular/triangular, torso is tiny, limbs are stick-thin, eyes are very large circles relative to face size, hands are oversized'",
-  "mustPreserveFeatures": [
-    "List 4-6 features that are non-negotiable for instant character recognition — specific shapes, markings, accessories, or features that define this character. Be very specific, e.g. 'large angular triangular head shape', 'two thin black antennae on top of head', 'large circular magenta eyes with no whites visible'"
+  "character_name": "character name if recognizable, otherwise 'Character'",
+  "summary": "one warm, enthusiastic sentence for the user describing what you see",
+
+  "art_style": {
+    "overall_style_name": "studio/artist name or descriptive style label, e.g. 'Jhonen Vasquez Nickelodeon cartoon'",
+    "outline_style": "outline weight, uniformity, and corner treatment — be precise, e.g. 'very thick uniform black outlines (~4px equivalent), hard square corners, zero line-weight variation, no tapering'",
+    "shading_style": "exactly how shading is applied — e.g. 'flat 2D cel-shading, zero gradients anywhere, pure solid flat colour fills, pure black used for shadow areas only'",
+    "color_rendering": "how colours are applied — e.g. 'fully saturated pure flat colours, hard colour boundaries, zero blending or anti-aliasing between colour areas, high contrast'",
+    "shape_vocabulary": "dominant shape language — e.g. 'angular boxy geometry, rectangular and trapezoidal forms throughout, sharp right-angle corners, minimal organic curves'"
+  },
+
+  "face": {
+    "head_shape": "exact skull/head geometry in precise terms — e.g. 'large rectangular boxy skull, noticeably wider at the top, flat crown, very angular jaw, no rounded organic curves'",
+    "eye_description": "eye shape, relative size, iris colour, pupil detail, sclera — e.g. 'very large circular magenta-pink irises that fill the eye socket, small solid black circular pupils centred in them, no white sclera visible at all, thick black outlines around entire eye'",
+    "nose_description": "nose shape and placement — e.g. 'tiny rounded pink bump protruding slightly from the centre of the face, almost vestigial, very small relative to head'",
+    "mouth_description": "mouth typical shape and details — e.g. 'small rectangular angular mouth, commonly showing small blocky white teeth, thin black outline, corners are sharp not curved'",
+    "head_top_features": "hair, horns, antennae, ears, hat, or anything above the face — e.g. 'two thin black antennae rising from the crown of the head, one slightly taller, tips curved slightly outward'"
+  },
+
+  "body": {
+    "proportions": "ALL proportion exaggerations relative to head size — e.g. 'head is approximately 40% of total standing height, torso is very small and compact (~20% of height), limbs are extremely thin stick-like, hands are small'",
+    "torso_description": "torso shape and exact surface pattern — e.g. 'small compact rectangular torso, covered in alternating hot-pink and slightly darker pink/black thin horizontal equal-width stripes'",
+    "arm_description": "arm shape and hand details — e.g. 'extremely thin cylindrical stick-like arms, very small hands with exactly 3 pointed claw-like fingers, wearing form-fitting black gloves'",
+    "leg_description": "leg shape and footwear — e.g. 'very short thin cylindrical legs, wearing large chunky black platform boots with very thick flat rectangular soles'"
+  },
+
+  "colors": {
+    "skin_color": "exact skin/fur colour with approximate hex — e.g. 'bright lime green, approximately #6DBB4A'",
+    "dominant_colors": ["each entry as 'hex description of usage', e.g. '#6DBB4A bright lime green — skin', '#E84BA0 hot pink — costume and accessories'"]
+  },
+
+  "accessories": [
+    "each accessory as a precise description with shape, colour, and placement — e.g. 'smooth rounded grey backpack worn on back, has two flat hot-pink circular polka-dot spots on it'",
+    "e.g. 'large chunky black platform boots, very thick flat rectangular soles, worn on feet'"
   ],
-  "characterDescription": "Dense single-paragraph visual description. Include: exact head shape and size relative to body, skin/fur color with precise descriptors, hair or head features and their exact shape, eye shape/size/color, nose and mouth style, all clothing with exact colors and silhouette, footwear, every accessory. Write it so an illustrator working in the exact artStyle above would produce an on-model drawing. This paragraph is copied verbatim into every prompt.",
-  "colorPalette": [
-    {"hex": "#RRGGBB", "label": "Short name", "area": "where this color appears"}
+
+  "must_preserve": [
+    "list exactly 5 features that are the most critical non-negotiable identity anchors — if any of these are wrong the character is instantly unrecognisable. Be maximally specific about shape, colour, and placement.",
+    "example entry: 'very large circular magenta-pink irises with no visible white sclera — the single most important facial feature'",
+    "example entry: 'large rectangular boxy skull shape — must not be rounded or organic'"
   ],
-  "components": [
-    {"id":"front_view",         "type":"front_view",         "label":"Front View",     "prompt":""},
-    {"id":"three_quarter_view", "type":"three_quarter_view", "label":"3/4 View",       "prompt":""},
-    {"id":"expression_sheet",   "type":"expression_sheet",   "label":"Expressions",    "prompt":""},
-    {"id":"action_pose",        "type":"action_pose",        "label":"Signature Pose", "prompt":""},
-    {"id":"back_view",          "type":"back_view",          "label":"Back View",      "prompt":""}
+
+  "color_palette": [
+    {"hex": "#RRGGBB", "label": "Short name", "area": "exactly where this colour appears"}
   ]
 }
 
-Build each component prompt with this template (fill every bracket):
-"[artStyle] illustration. [lineworkStyle]. [characterDescription]. MUST PRESERVE: [mustPreserveFeatures as comma-separated list]. [VIEW INSTRUCTION]. White background. No scenery."
-
-VIEW INSTRUCTIONS — use these exactly:
-- front_view: "Full body, facing directly toward viewer, neutral standing pose, arms relaxed at sides, character fills ~85% of image height. Single character, single pose only."
-- three_quarter_view: "Full body, body angled 45 degrees right, face turned toward viewer, neutral standing pose, character fills ~85% of image height. Single character, single pose only."
-- expression_sheet: "Six facial close-up portraits in a 2x3 grid, labeled: Happy, Sad, Angry, Surprised, Scared, Determined. Head and bust only, no full body, no repeated full-body poses."
-- action_pose: "Full body, one single dynamic pose expressing this character's personality, character fills ~85% of image height. One character, one pose only. No duplicate figures."
-- back_view: "Full body, character facing directly away from viewer — back of head and back of body only, face is NOT visible, no face shown at all, neutral standing pose, arms relaxed, character fills ~85% of image height. Single character, single pose only."
-
-Rules:
-- artStyle, lineworkStyle, characterDescription, and mustPreserveFeatures must be IDENTICAL across all 5 prompts
-- Extract 5–8 key colors for colorPalette`
+Critical instructions:
+- Replace every example value with what you actually observe in the image
+- Be maximally specific — 'green skin' is useless, 'bright lime green ~#6DBB4A skin covering the entire head, neck, and hands' is useful
+- The output will be used to generate new drawings; vague descriptions produce off-model results`
 
 export async function analyzeAndPlanSheet(apiKey: string, imageUrl: string): Promise<SheetAnalysis> {
+  // --- Phase 1: vision extraction node — fills the rigid CharacterSchema ---
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
   const mimeType = guessMimeType(imageUrl)
 
   const result = await withRetry(() =>
-    model.generateContent([{ fileData: { fileUri: imageUrl, mimeType } }, SHEET_TEMPLATE_PROMPT]),
+    model.generateContent([{ fileData: { fileUri: imageUrl, mimeType } }, SCHEMA_EXTRACTION_PROMPT]),
   )
 
   const raw = result.response.text()
   const fenceStripped = raw.replace(/```(?:json)?\n?/g, '').trim()
   const jsonMatch = fenceStripped.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error(`Could not parse sheet analysis. Response: ${raw.slice(0, 300)}`)
+  if (!jsonMatch) throw new Error(`Could not parse character schema. Response: ${raw.slice(0, 300)}`)
 
-  return JSON.parse(jsonMatch[0]) as SheetAnalysis
+  const schema = JSON.parse(jsonMatch[0]) as CharacterSchema
+
+  // --- Phase 2: deterministic prompt builder — no AI involved ---
+  const builtComponents = buildComponentPromptsFromSchema(schema)
+
+  return {
+    characterName: schema.character_name,
+    summary: schema.summary,
+    artStyle: schema.art_style.overall_style_name,
+    colorPalette: schema.color_palette,
+    components: builtComponents,
+  }
 }
 
 const RETRYABLE_STATUS_CODES = [429, 503]
