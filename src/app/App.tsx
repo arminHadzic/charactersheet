@@ -143,6 +143,11 @@ function MainApp() {
 
     // Step 3: try to fetch reference image as base64 for Imagen subject conditioning
     const referenceBase64 = await fetchImageAsBase64(url)
+    if (referenceBase64) {
+      store.addMessage('agent', 'Reference image loaded — passing to Imagen for character consistency.')
+    } else {
+      store.addMessage('agent', 'Note: reference image could not be fetched (likely a CORS restriction on this URL). Imagen will rely on the text description only — style fidelity may be reduced.')
+    }
 
     // Step 4: generate all Imagen components in parallel
     const total = analysis.components.length

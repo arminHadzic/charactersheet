@@ -4,37 +4,29 @@ const SWATCH_W = 140
 const SWATCH_H = 100
 const LABEL_H = 48
 const GAP = 16
-const HEADER_H = 52
 const PAD = 28
 
 export function generateColorPaletteImage(swatches: ColorSwatchData[], characterName: string): string {
+  void characterName // retained for API compatibility
   const cols = Math.min(swatches.length, 4)
   const rows = Math.ceil(swatches.length / cols)
   const canvasW = PAD * 2 + cols * SWATCH_W + (cols - 1) * GAP
-  const canvasH = HEADER_H + PAD + rows * (SWATCH_H + LABEL_H + GAP)
+  const canvasH = PAD + rows * (SWATCH_H + LABEL_H + GAP)
 
   const canvas = document.createElement('canvas')
   canvas.width = canvasW
   canvas.height = canvasH
   const ctx = canvas.getContext('2d')!
 
-  // Background
-  ctx.fillStyle = '#FAFAF8'
-  ctx.fillRect(0, 0, canvasW, canvasH)
-
-  // Header bar
-  ctx.fillStyle = '#111827'
-  ctx.fillRect(0, 0, canvasW, HEADER_H)
+  // Background — white to match the sheet
   ctx.fillStyle = '#FFFFFF'
-  ctx.font = 'bold 14px Inter, sans-serif'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(`${characterName} — Color Palette`, PAD, HEADER_H / 2)
+  ctx.fillRect(0, 0, canvasW, canvasH)
 
   swatches.forEach(({ hex, label, area }, i) => {
     const col = i % cols
     const row = Math.floor(i / cols)
     const x = PAD + col * (SWATCH_W + GAP)
-    const y = HEADER_H + PAD + row * (SWATCH_H + LABEL_H + GAP)
+    const y = PAD + row * (SWATCH_H + LABEL_H + GAP)
 
     // Swatch
     ctx.fillStyle = hex

@@ -22,6 +22,9 @@ export interface SheetAnalysis {
   characterName: string
   summary: string
   artStyle: string
+  lineworkStyle?: string
+  proportionNotes?: string
+  mustPreserveFeatures?: string[]
   characterDescription: string
   colorPalette: ColorSwatchData[]
   components: ComponentPlan[]
@@ -35,8 +38,13 @@ const SHEET_TEMPLATE_PROMPT = `You are an animation character artist. Analyze th
 {
   "characterName": "character name if recognizable, otherwise 'Character'",
   "summary": "one enthusiastic sentence describing the character for the user",
-  "artStyle": "precise style descriptor, e.g. 'western cartoon with bold black outlines, flat cel-shaded colors, exaggerated proportions'",
-  "characterDescription": "Dense single-paragraph visual description for image consistency. Include every detail: exact body proportions and build, skin/fur/scale color with descriptors, hair or head features, eye shape and color, nose/mouth, all clothing items with exact colors, footwear, accessories, any distinctive markings or unique features. This will be copied verbatim into every image generation prompt.",
+  "artStyle": "precise studio-level style descriptor capturing the EXACT look: line weight (thick/thin/variable), shading method (flat cel-shading/gradients/painterly), shape vocabulary (angular/rounded/geometric), and overall aesthetic. E.g. 'Jhonen Vasquez western cartoon: very thick uniform black outlines, flat cel-shaded fills with no gradients, angular geometric shapes, high-contrast pure colors, exaggerated gothic proportions'",
+  "lineworkStyle": "Describe outline and rendering precisely so an artist could replicate it. E.g. 'thick uniform black outlines (~4px equivalent), flat color fills, pure black for shadows, zero gradients or soft shading, bold high-contrast palette'",
+  "proportionNotes": "List every exaggerated proportion explicitly. E.g. 'head is ~40% of total body height and very angular/triangular, torso is tiny, limbs are stick-thin, eyes are very large circles relative to face size, hands are oversized'",
+  "mustPreserveFeatures": [
+    "List 4-6 features that are non-negotiable for instant character recognition — specific shapes, markings, accessories, or features that define this character. Be very specific, e.g. 'large angular triangular head shape', 'two thin black antennae on top of head', 'large circular magenta eyes with no whites visible'"
+  ],
+  "characterDescription": "Dense single-paragraph visual description. Include: exact head shape and size relative to body, skin/fur color with precise descriptors, hair or head features and their exact shape, eye shape/size/color, nose and mouth style, all clothing with exact colors and silhouette, footwear, every accessory. Write it so an illustrator working in the exact artStyle above would produce an on-model drawing. This paragraph is copied verbatim into every prompt.",
   "colorPalette": [
     {"hex": "#RRGGBB", "label": "Short name", "area": "where this color appears"}
   ],
@@ -49,8 +57,8 @@ const SHEET_TEMPLATE_PROMPT = `You are an animation character artist. Analyze th
   ]
 }
 
-Build each component prompt using this exact template:
-"[artStyle] illustration. [characterDescription]. [VIEW INSTRUCTION]. White background. No scenery."
+Build each component prompt with this template (fill every bracket):
+"[artStyle] illustration. [lineworkStyle]. [characterDescription]. MUST PRESERVE: [mustPreserveFeatures as comma-separated list]. [VIEW INSTRUCTION]. White background. No scenery."
 
 VIEW INSTRUCTIONS — use these exactly:
 - front_view: "Full body, facing directly toward viewer, neutral standing pose, arms relaxed at sides, character fills ~85% of image height. Single character, single pose only."
@@ -60,8 +68,7 @@ VIEW INSTRUCTIONS — use these exactly:
 - back_view: "Full body, character facing directly away from viewer — back of head and back of body only, face is NOT visible, no face shown at all, neutral standing pose, arms relaxed, character fills ~85% of image height. Single character, single pose only."
 
 Rules:
-- characterDescription must be IDENTICAL text in all 5 prompts
-- Keep each total prompt under 480 characters
+- artStyle, lineworkStyle, characterDescription, and mustPreserveFeatures must be IDENTICAL across all 5 prompts
 - Extract 5–8 key colors for colorPalette`
 
 export async function analyzeAndPlanSheet(apiKey: string, imageUrl: string): Promise<SheetAnalysis> {

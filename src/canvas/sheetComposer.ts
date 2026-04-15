@@ -27,8 +27,8 @@ export async function composeModelSheet(
   canvas.height = CANVAS_H
   const ctx = canvas.getContext('2d')!
 
-  // Background
-  ctx.fillStyle = '#F7F6F2'
+  // Background — pure white so it matches the white backgrounds of all generated images
+  ctx.fillStyle = '#FFFFFF'
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
 
   // Outer border
@@ -71,10 +71,6 @@ export async function composeModelSheet(
 
   const imageLoadPromises = layouts.map(({ comp, x, y, w, h }) =>
     new Promise<void>((resolve) => {
-      // Cell background
-      ctx.fillStyle = '#FFFFFF'
-      ctx.fillRect(x, y, w, h)
-
       if (comp.imageData) {
         const img = new Image()
         img.onload = () => {
