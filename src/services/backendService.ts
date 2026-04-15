@@ -2,7 +2,7 @@ import { fetchImageAsBase64 } from './imagenService'
 
 interface GeneratePayload {
   apiKey: string
-  referenceImageBase64: string
+  referenceImagesBase64: string[]
   userPreferences: string
 }
 
@@ -18,17 +18,12 @@ interface GenerateResponse {
 
 export async function submitToLangGraph(
   apiKey: string,
-  imageUrl: string,
+  imagesBase64: string[],
   userPreferences: string
 ): Promise<GenerateResponse> {
-  const base64 = await fetchImageAsBase64(imageUrl)
-  if (!base64) {
-    throw new Error("Could not fetch the reference image as base64 (CORS or network error).")
-  }
-  
   const payload: GeneratePayload = {
     apiKey,
-    referenceImageBase64: base64,
+    referenceImagesBase64: imagesBase64,
     userPreferences
   }
 

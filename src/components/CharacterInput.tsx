@@ -23,10 +23,10 @@ export default function CharacterInput({ onGenerate, disabled }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <div className="flex gap-3">
         <input
-          type="url"
+          type="text"
           value={localUrl}
           onChange={(e) => setLocalUrl(e.target.value)}
-          placeholder="Paste a character image URL..."
+          placeholder="Paste one or more character image URLs (separated by space)..."
           disabled={disabled}
           className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-sm disabled:opacity-50"
         />

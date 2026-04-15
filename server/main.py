@@ -18,7 +18,7 @@ app.add_middleware(
 
 class GenerateRequest(BaseModel):
     apiKey: str
-    referenceImageBase64: str
+    referenceImagesBase64: List[str]
     userPreferences: Optional[str] = ""
 
 class GenerateResponse(BaseModel):
@@ -34,7 +34,7 @@ async def generate_endpoint(request: GenerateRequest):
     try:
         results = await generate_character_sheet(
             api_key=request.apiKey,
-            image_b64=request.referenceImageBase64,
+            images_b64=request.referenceImagesBase64,
             preferences=request.userPreferences
         )
         return GenerateResponse(components=results)

@@ -8,7 +8,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
-STRICT_ADHERENCE = 'CRITICAL: DO NOT rely on your pre-training memory of any copyrighted characters! The model must NOT hallucinate features from the source material that are not in the reference (e.g. DO NOT draw a sticking out tongue!). Ensure uniform colors (e.g. collar, clothing) remain perfectly consistent across all viewing angles. Ensure limbs are not omitted (at least one arm must be clearly visible in profile views).'
+STRICT_ADHERENCE = 'Maintain the character\'s core design (correct eye shapes, stripes, colors), but DO NOT copy the reference so rigidly that you create unnatural poses. Synthesize new angles faithfully. You may leverage your pre-training knowledge of the character to ensure accurate 3D proportions, but you MUST perfectly adhere to the color palette shown. Ensure uniform colors (e.g. collar, clothing) remain consistent across views. Ensure limbs are not omitted.'
 PURE_WHITE_BG = f'SOLID PURE WHITE BACKGROUND (HEX #FFFFFF) WITH NO SHADOWS OR SCENERY. {STRICT_ADHERENCE}'
 
 STYLE_PREFIXES = {
@@ -23,7 +23,7 @@ STYLE_PREFIXES = {
 
 class AgentState(TypedDict):
     api_key: str
-    reference_image_b64: str
+    reference_images_b64: List[str]
     user_preferences: str
     vision_extraction: Optional[Dict[str, Any]]
     locked_constraint: str
@@ -41,10 +41,11 @@ Return exactly a JSON object with these fields, nothing else:
   "anatomy": "EXACT physical description of their face/head, number of eyes, type of eyes (pupils or solid colors?), number of ears/antennae. BE EXTREMELY PRECISE (e.g. 'Has exactly 2 tall antennae, 2 large solid magenta eyes with no white sclera/pupils').",
   "consistencyNotes": "key visual rules to maintain across all drawings"
 }"""
-    msg = HumanMessage(content=[
-        {"type": "text", "text": prompt},
-        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{state['reference_image_b64']}"}}
-    ])
+    msg_content = [{"type": "text", "text": prompt}]
+    for b64 in state.get('reference_images_b64', []):
+        msg_content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}})
+        
+    msg = HumanMessage(content=msg_content)
     
     res = await llm.ainvoke([msg])
     
@@ -93,21 +94,23 @@ class RateLimitException(Exception):
     stop=stop_after_attempt(5),
     retry=retry_if_exception_type((RateLimitException, httpx.TimeoutException, Exception))
 )
-async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref_b64: str):
+async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref_images_b64: List[str]):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
+    
+    parts = [{"text": prompt}]
+    for b64 in ref_images_b64:
+        parts.append({
+            "inlineData": {
+                "mimeType": "image/png",
+                "data": b64
+            }
+        })
+        
     payload = {
         "contents": [
             {
                 "role": "user",
-                "parts": [
-                    {"text": prompt},
-                    {
-                        "inlineData": {
-                            "mimeType": "image/png",
-                            "data": ref_b64
-                        }
-                    }
-                ]
+                "parts": parts
             }
         ],
         "generationConfig": {
@@ -148,7 +151,7 @@ async def generate_components(state: AgentState):
                 prompt = STYLE_PREFIXES[k] + " " + state.get("palette_constraint", "")
             else:
                 prompt = STYLE_PREFIXES[k] + " " + state["locked_constraint"]
-            task = asyncio.create_task(fetch_imagen(client, state["api_key"], prompt, state["reference_image_b64"]))
+            task = asyncio.create_task(fetch_imagen(client, state["api_key"], prompt, state["reference_images_b64"]))
             tasks.append(task)
             
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -178,10 +181,10 @@ builder.add_edge("generate", END)
 
 graph = builder.compile()
 
-async def generate_character_sheet(api_key: str, image_b64: str, preferences: str):
+async def generate_character_sheet(api_key: str, images_b64: List[str], preferences: str):
     initial_state = {
         "api_key": api_key,
-        "reference_image_b64": image_b64,
+        "reference_images_b64": images_b64,
         "user_preferences": preferences,
         "vision_extraction": None,
         "locked_constraint": "",
