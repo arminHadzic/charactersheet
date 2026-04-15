@@ -88,10 +88,30 @@ class RateLimitException(Exception):
     retry=retry_if_exception_type(RateLimitException)
 )
 async def fetch_imagen(client: httpx.AsyncClient, api_key: str, prompt: str, ref_b64: str):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:predict?key={api_key}"
     payload = {
         "instances": [{
-            "prompt": prompt
+            "prompt": prompt,
+            "referenceImages": [
+                {
+                    "referenceType": "REFERENCE_TYPE_SUBJECT",
+                    "referenceId": 1,
+                    "referenceImage": {
+                        "bytesBase64Encoded": ref_b64
+                    },
+                    "subjectImageConfig": {
+                        "subjectType": "SUBJECT_TYPE_DEFAULT"
+                    }
+                },
+                {
+                    "referenceType": "REFERENCE_TYPE_STYLE",
+                    "referenceId": 2,
+                    "referenceImage": {
+                        "bytesBase64Encoded": ref_b64
+                    },
+                    "styleImageConfig": {}
+                }
+            ]
         }],
         "parameters": {
             "sampleCount": 1,
