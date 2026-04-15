@@ -8,15 +8,16 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
-PURE_WHITE_BG = 'SOLID PURE WHITE BACKGROUND (HEX #FFFFFF) WITH NO SHADOWS OR SCENERY. DO NOT ADD A BACKGROUND.'
+STRICT_ADHERENCE = 'CRITICAL: DO NOT rely on your pre-training memory of any copyrighted characters. You MUST base your design STRICTLY and ONLY on the attached reference image. If the reference does not have stripes or extra lines on the torso, DO NOT ADD THEM. Ensure the eye design, colors, and pupil shapes perfectly match the reference.'
+PURE_WHITE_BG = f'SOLID PURE WHITE BACKGROUND (HEX #FFFFFF) WITH NO SHADOWS OR SCENERY. {STRICT_ADHERENCE}'
 
 STYLE_PREFIXES = {
-    "front_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Front view (facing viewer), neutral standing pose, character fills 85% of image height, clean line art. {PURE_WHITE_BG}",
-    "three_quarter_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. 3/4 angle view, slight turn to the right, neutral pose, clean line art. {PURE_WHITE_BG}",
-    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE AND DISTINCT HEADS arranged in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). ALL HEADS MUST BELONG TO THE SAME CHARACTER. {PURE_WHITE_BG}",
-    "action_pose": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Dynamic signature action pose that reveals the character's personality. Clean line art. {PURE_WHITE_BG}",
-    "back_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Back view, character facing directly away from viewer, back of head only, face NOT visible, neutral standing pose, clean line art. {PURE_WHITE_BG}",
-    "side_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Side profile view, neutral standing pose, character fills 85% of image height, clean line art. {PURE_WHITE_BG}"
+    "front_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Front view (facing viewer), neutral standing pose, clean line art. {PURE_WHITE_BG}",
+    "three_quarter_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. 3/4 angle view, slight turn to the right, neutral pose. {PURE_WHITE_BG}",
+    "back_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Back view, character facing directly away from viewer, back of head only, face NOT visible, neutral standing pose. {PURE_WHITE_BG}",
+    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE HEADS in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). CRITICAL: Ensure ALL 6 HEADS strictly maintain the exact same eye shape and pupil design as the reference image. Do not use generic eyes. {PURE_WHITE_BG}",
+    "action_pose": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Dynamic signature action pose that reveals the character's personality. {PURE_WHITE_BG}",
+    "color_palette": f"Animation model sheet — COLOR PALETTE CHART. Draw a clean, organized grid of square color swatches representing every major color used in this character's design. Do not draw the character, ONLY draw the color swatches with clean borders. {PURE_WHITE_BG}"
 }
 
 
