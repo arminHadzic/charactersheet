@@ -203,17 +203,19 @@ export async function handleRegenerateComponent(
 
 // --- Prompt builder ---
 
+const PURE_WHITE_BG = 'SOLID PURE WHITE BACKGROUND (HEX #FFFFFF) WITH NO SHADOWS OR SCENERY. DO NOT ADD A BACKGROUND.';
+
 const STYLE_PREFIXES: Record<ComponentType, string> = {
-  front_view: 'Animation model sheet — full body front view (facing viewer), neutral standing pose, character fills 85% of image height, clean line art, white background.',
-  side_view: 'Animation model sheet — full body side profile view, neutral standing pose, character fills 85% of image height, clean line art, white background.',
-  back_view: 'Animation model sheet — full body back view, character facing directly away from viewer, back of head only, face NOT visible, no face shown, neutral standing pose, character fills 85% of image height, clean line art, white background.',
-  three_quarter_view: 'Animation model sheet — full body 3/4 angle view, slight turn to the right, neutral pose, character fills 85% of image height, clean line art, white background.',
-  expression_sheet: 'Animation model sheet — expression reference sheet, 6 facial close-ups in a 2x3 grid: happy, sad, angry, surprised, scared, determined. Same character, consistent style. White background.',
-  action_pose: 'Animation model sheet — full body dynamic signature action pose that reveals the character\'s personality, character fills 85% of image height. Clean line art, white background.',
-  lip_sync_chart: 'Animation model sheet — lip sync / mouth chart reference, 8-10 mouth shapes for phonemes (A/I/O/U/E/M/B/F/TH/etc.) arranged in a grid. Clean line art, white background.',
-  color_palette: 'Animation model sheet — color reference chart. Character shown in flat color with color swatch annotations pointing to different areas. White background.',
-  size_comparison: 'Animation model sheet — size comparison chart showing the character next to a common object for scale reference. Clean line art, white background.',
-  costume_detail: 'Animation model sheet — costume and accessory detail sheet, showing close-up views of clothing, props, and accessories. White background.',
+  front_view: `Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Front view (facing viewer), neutral standing pose, character fills 85% of image height, clean line art. ${PURE_WHITE_BG}`,
+  side_view: `Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Side profile view, neutral standing pose, character fills 85% of image height, clean line art. ${PURE_WHITE_BG}`,
+  back_view: `Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Back view, character facing directly away from viewer, back of head only, face NOT visible, neutral standing pose, clean line art. ${PURE_WHITE_BG}`,
+  three_quarter_view: `Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. 3/4 angle view, slight turn to the right, neutral pose, clean line art. ${PURE_WHITE_BG}`,
+  expression_sheet: `Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE AND DISTINCT HEADS arranged in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). ALL HEADS MUST BELONG TO THE SAME CHARACTER. ${PURE_WHITE_BG}`,
+  action_pose: `Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE FROM THE VERY TOP OF THE HEAD TO THE BOTTOM OF THE FEET. DO NOT CROP. Dynamic signature action pose that reveals the character's personality. Clean line art. ${PURE_WHITE_BG}`,
+  lip_sync_chart: `Animation model sheet — lip sync / mouth chart reference, 8-10 mouth shapes for phonemes (A/I/O/U/E/M/B/F/TH/etc.) arranged in a grid. Clean line art. ${PURE_WHITE_BG}`,
+  color_palette: `Animation model sheet — color reference chart. Character shown in flat color with color swatch annotations pointing to different areas. ${PURE_WHITE_BG}`,
+  size_comparison: `Animation model sheet — size comparison chart showing the character next to a common object for scale reference. Clean line art. ${PURE_WHITE_BG}`,
+  costume_detail: `Animation model sheet — costume and accessory detail sheet, showing close-up views of clothing, props, and accessories. ${PURE_WHITE_BG}`,
 }
 
 function buildComponentPrompt(
@@ -229,7 +231,12 @@ function buildComponentPrompt(
   const consistency = profile.consistencyNotes
     ? `Consistency rules: ${profile.consistencyNotes}. `
     : ''
+  
+  const colorStr = profile.colorPalette?.length
+    ? profile.colorPalette.map(c => `"${c.label}": ${c.hex}`).join(', ')
+    : ''
+  const colorsText = colorStr ? `COLOR PALETTE (MUST STRICTLY USE THESE COLORS): ${colorStr}. ` : ''
   const prefs = userPreferences ? `User notes: ${userPreferences}. ` : ''
 
-  return `${prefix} ${styleDesc}${attrDesc}${consistency}${prefs}Professional animation studio quality. No background scenery.`
+  return `${prefix} ${styleDesc}${attrDesc}${consistency}${colorsText}${prefs}Professional animation studio quality.`
 }

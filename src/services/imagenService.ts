@@ -14,7 +14,13 @@ export async function generateImage(
         referenceType: 'REFERENCE_TYPE_SUBJECT',
         referenceId: 1,
         referenceImage: { bytesBase64Encoded: referenceImageBase64 },
-        subjectImageConfig: { subjectType: 'SUBJECT_TYPE_PERSON' },
+        subjectImageConfig: { subjectType: 'SUBJECT_TYPE_DEFAULT' },
+      },
+      {
+        referenceType: 'REFERENCE_TYPE_STYLE',
+        referenceId: 2,
+        referenceImage: { bytesBase64Encoded: referenceImageBase64 },
+        styleImageConfig: {},
       },
     ]
   }
