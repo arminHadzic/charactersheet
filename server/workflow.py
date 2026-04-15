@@ -15,9 +15,9 @@ STYLE_PREFIXES = {
     "front_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Front view (facing viewer), neutral standing pose, clean line art. {PURE_WHITE_BG}",
     "three_quarter_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. 3/4 angle view, slight turn to the right, neutral pose. {PURE_WHITE_BG}",
     "back_view": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Back view, character facing directly away from viewer, back of head only, face NOT visible, neutral standing pose. {PURE_WHITE_BG}",
-    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE HEADS in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). CRITICAL: Ensure ALL 6 HEADS strictly maintain the EXACT same anatomy as the reference image (e.g. correct EXACT number of antennae on EVERY head, correct eye geometric shape). Do not use generic eyes. {PURE_WHITE_BG}",
+    "expression_sheet": f"Animation model sheet — EXPRESSION REFERENCE GRID CHART. Must contain EXACTLY 6 SEPARATE HEADS in a 2x3 grid. Each head shows a completely different emotion (happy, sad, angry, surprised, scared, determined). CRITICAL: Ensure ALL 6 HEADS strictly maintain the EXACT same anatomy as the reference image (e.g. correct EXACT number of antennae, correct eye geometric shape). IF the reference character has NO pupils or white scleras, DO NOT add pupils/whites for 'scared' or 'surprised' expressions; express emotion solely through the outline shape of the eye/brow! {PURE_WHITE_BG}",
     "action_pose": f"Animation model sheet — FULL BODY SHOT: THE ENTIRE CHARACTER MUST BE VISIBLE. Dynamic signature action pose that reveals the character's personality. CRITICAL: Ensure the eyes and anatomy still EXACTLY match the reference image's geometry even in a dynamic pose. {PURE_WHITE_BG}",
-    "color_palette": f"Animation model sheet — COLOR PALETTE CHART. Draw a clean, organized grid of square color swatches representing every major color used in this character's design. Do not draw the character, ONLY draw the color swatches with clean borders. {PURE_WHITE_BG}"
+    "color_palette": f"Animation model sheet — COLOR PALETTE CHART. Draw a clean, organized grid of square color swatches representing every major color used in this character's design. EXACTLY ONLY COLOR SWATCHES. DO NOT draw the character, DO NOT draw anatomical features, ONLY draw flat color swatches with clean borders. SOLID PURE WHITE BACKGROUND."
 }
 
 
@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     user_preferences: str
     vision_extraction: Optional[Dict[str, Any]]
     locked_constraint: str
+    palette_constraint: str
     components: List[Dict[str, str]]
 
 async def extract_vision(state: AgentState):
@@ -79,7 +80,9 @@ async def lock_constraints(state: AgentState):
     prefStr = f"User notes: {prefs}. " if prefs else ""
     
     constraint = f"{styleDesc}{attrDesc}{anatomyDesc}{consistency}{colorsText}{prefStr}Professional animation studio quality."
-    return {"locked_constraint": constraint}
+    palette_constraint = f"EXTRACTED COLORS: {colorStr}. {prefStr}Professional graphic design quality."
+    
+    return {"locked_constraint": constraint, "palette_constraint": palette_constraint}
 
 
 class RateLimitException(Exception):
@@ -141,7 +144,10 @@ async def generate_components(state: AgentState):
         
         # Concurrently fire all requests, relying on tenacity retries to backoff safely on 429s.
         for k in keys:
-            prompt = STYLE_PREFIXES[k] + " " + state["locked_constraint"]
+            if k == "color_palette":
+                prompt = STYLE_PREFIXES[k] + " " + state.get("palette_constraint", "")
+            else:
+                prompt = STYLE_PREFIXES[k] + " " + state["locked_constraint"]
             task = asyncio.create_task(fetch_imagen(client, state["api_key"], prompt, state["reference_image_b64"]))
             tasks.append(task)
             
