@@ -88,7 +88,7 @@ function MainApp() {
       <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-white">Character Model Sheet Generator</h1>
-          <p className="text-xs text-gray-400">Powered by FastAPI, LangGraph, and Imagen 4</p>
+          <p className="text-xs text-gray-400">Powered by FastAPI, LangGraph, and Gemini 3.1 Flash Image</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -102,6 +102,18 @@ function MainApp() {
           </button>
         </div>
       </header>
+
+      {/* Local Server Setup Blurb */}
+      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 text-sm text-gray-300 flex items-center justify-between">
+        <div>
+          This tool requires the local <span className="font-semibold text-white">Python FastAPI backend</span> to be running locally to process API calls.
+          <br/>
+          Clone the repo and run <code className="bg-black/50 px-1 py-0.5 rounded text-gray-200 text-xs">mamba activate charactersheet && ./run.sh</code> from the project root.
+        </div>
+        <a href="https://github.com/arminHadzic/charactersheet" target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-200 border border-gray-700 transition-colors flex gap-2 items-center">
+          View GitHub Repo
+        </a>
+      </div>
 
       {/* URL Input */}
       <div className="border-b border-gray-800 px-6 py-4">
