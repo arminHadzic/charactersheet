@@ -142,29 +142,52 @@ async def generate_components(state: AgentState):
     comps = []
     
     async with httpx.AsyncClient() as client:
-        tasks = []
         keys = list(STYLE_PREFIXES.keys())
         
-        # Concurrently fire all requests, relying on tenacity retries to backoff safely on 429s.
-        for k in keys:
+        current_context_images = list(state.get("reference_images_b64", []))
+        
+        # 1. Generate front_view
+        if "front_view" in keys:
+            try:
+                front_prompt = STYLE_PREFIXES["front_view"] + " " + state["locked_constraint"]
+                front_res = await fetch_imagen(client, state["api_key"], front_prompt, current_context_images)
+                comps.append({"id": "front_view", "type": "front_view", "imageData": f"data:image/png;base64,{front_res}"})
+                current_context_images.append(front_res)
+            except Exception as e:
+                print(f"Failed to generate front_view: {repr(e)}")
+                
+        # 2. Generate three_quarter_view
+        if "three_quarter_view" in keys:
+            try:
+                tq_prompt = STYLE_PREFIXES["three_quarter_view"] + " " + state["locked_constraint"]
+                tq_res = await fetch_imagen(client, state["api_key"], tq_prompt, current_context_images)
+                comps.append({"id": "three_quarter_view", "type": "three_quarter_view", "imageData": f"data:image/png;base64,{tq_res}"})
+                current_context_images.append(tq_res)
+            except Exception as e:
+                print(f"Failed to generate three_quarter_view: {repr(e)}")
+                
+        # 3. Generate remaining concurrently
+        remaining_keys = [k for k in keys if k not in ("front_view", "three_quarter_view")]
+        tasks = []
+        for k in remaining_keys:
             if k == "color_palette":
                 prompt = STYLE_PREFIXES[k] + " " + state.get("palette_constraint", "")
             else:
                 prompt = STYLE_PREFIXES[k] + " " + state["locked_constraint"]
-            task = asyncio.create_task(fetch_imagen(client, state["api_key"], prompt, state["reference_images_b64"]))
+            task = asyncio.create_task(fetch_imagen(client, state["api_key"], prompt, current_context_images))
             tasks.append(task)
             
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for k, res in zip(keys, results):
-            if isinstance(res, Exception):
-                print(f"Failed to generate {k}: {repr(res)}")
-            else:
-                comps.append({
-                    "id": k,
-                    "type": k,
-                    "imageData": f"data:image/png;base64,{res}"
-                })
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for k, res in zip(remaining_keys, results):
+                if isinstance(res, Exception):
+                    print(f"Failed to generate {k}: {repr(res)}")
+                else:
+                    comps.append({
+                        "id": k,
+                        "type": k,
+                        "imageData": f"data:image/png;base64,{res}"
+                    })
                 
     return {"components": comps}
 

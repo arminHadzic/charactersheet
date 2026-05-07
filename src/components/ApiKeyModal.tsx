@@ -23,14 +23,29 @@ export default function ApiKeyModal({ onClose, onContinue }: ApiKeyModalProps) {
     return true
   }
 
-  const handleServerRun = () => {
-    if (handleValidation(inputKey)) {
-      onContinue(false)
+  const [successMode, setSuccessMode] = useState<'server' | 'serverless' | null>(null)
+
+  const handleServerRun = async () => {
+    if (!handleValidation(inputKey)) return;
+    
+    try {
+      const res = await fetch('http://127.0.0.1:8000/docs', { method: 'HEAD' }).catch(() => null);
+      if (!res || !res.ok) {
+        setError('Local server not detected. Please ensure the Python backend is running.')
+        return;
+      }
+    } catch (e) {
+      setError('Local server not detected. Please ensure the Python backend is running.')
+      return;
     }
+    
+    setSuccessMode('server')
+    onContinue(false)
   }
 
   const handleServerlessRun = () => {
     if (handleValidation(inputKey)) {
+      setSuccessMode('serverless')
       onContinue(true)
     }
   }
@@ -66,13 +81,15 @@ export default function ApiKeyModal({ onClose, onContinue }: ApiKeyModalProps) {
         <div className="space-y-3">
           <div className="p-4 bg-blue-900/20 border border-blue-800/50 rounded-lg">
             <h3 className="text-blue-300 font-semibold mb-1 text-sm">Full LangGraph Workflow (Recommended)</h3>
-            <p className="text-gray-400 text-xs mb-3">Requires running the local FastAPI server from the charactersheet repository.</p>
+            <p className="text-gray-400 text-xs mb-3">Requires running the local FastAPI server from the <a href="https://github.com/arminHadzic/charactersheet" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">server repository</a>.</p>
             <button
               onClick={handleServerRun}
               disabled={!inputKey.trim()}
-              className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+              className={`w-full py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors ${
+                successMode === 'server' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'
+              }`}
             >
-              Run with Local Server
+              {successMode === 'server' ? '✓ Configured' : 'Run with Local Server'}
             </button>
           </div>
 
@@ -82,9 +99,11 @@ export default function ApiKeyModal({ onClose, onContinue }: ApiKeyModalProps) {
             <button
               onClick={handleServerlessRun}
               disabled={!inputKey.trim()}
-              className="w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+              className={`w-full py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors ${
+                successMode === 'serverless' ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 hover:bg-gray-600'
+              }`}
             >
-              Run Serverless
+              {successMode === 'serverless' ? '✓ Configured' : 'Run Serverless'}
             </button>
           </div>
         </div>

@@ -38,11 +38,11 @@ export default function App() {
     const runDemo = async () => {
       // 1. Type URL
       setDemoState('typing_url')
-      const targetUrl = 'https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/svg/penguin.svg'
+      const targetUrl = 'https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin.png'
       for (let i = 0; i <= targetUrl.length; i++) {
         if (isCancelled) return
         setUrl(targetUrl.substring(0, i))
-        await new Promise(r => setTimeout(r, 15)) 
+        await new Promise(r => setTimeout(r, 10)) 
       }
       
       await new Promise(r => setTimeout(r, 400))
@@ -62,7 +62,7 @@ export default function App() {
       if (isCancelled) return
       store.setAgentStatus('idle', '')
       setDemoState('showing_base')
-      store.setComposedSheet('/penguin_base_model_sheet.png')
+      store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet.png')
       
       await new Promise(r => setTimeout(r, 1500))
       
@@ -86,8 +86,20 @@ export default function App() {
       // 6. Show Cowboy
       if (isCancelled) return
       store.setAgentStatus('idle', '')
+      store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet_hat.png')
+      
+      await new Promise(r => setTimeout(r, 2000))
+      
+      // 7. Erase Cowboy
+      for (let i = targetPrompt.length; i >= 0; i--) {
+        if (isCancelled) return
+        setPreferences(targetPrompt.substring(0, i))
+        await new Promise(r => setTimeout(r, 20))
+      }
+      
+      await new Promise(r => setTimeout(r, 200))
+      store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet.png')
       setDemoState('complete')
-      store.setComposedSheet('/penguin_cowboy_model_sheet.png')
     }
     
     runDemo()
@@ -192,8 +204,7 @@ export default function App() {
 
   const handleApiKeyModalContinue = (serverless: boolean) => {
     store.setServerlessMode(serverless)
-    setShowApiKeyModal(false)
-    executeGeneration(serverless)
+    // Removed automatic execution per request
   }
 
   return (

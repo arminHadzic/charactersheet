@@ -1,78 +1,55 @@
-const IMAGEN_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict'
+const GEMINI_IMAGE_API_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent'
 
 export async function generateImage(
   apiKey: string,
   prompt: string,
   referenceImageBase64?: string | null,
 ): Promise<string> {
-  // Build instance — include subject reference image when available
-  const instance: Record<string, unknown> = { prompt }
+  const parts: any[] = [{ text: prompt }]
+
   if (referenceImageBase64) {
-    instance.referenceImages = [
-      {
-        referenceType: 'REFERENCE_TYPE_SUBJECT',
-        referenceId: 1,
-        referenceImage: { bytesBase64Encoded: referenceImageBase64 },
-        subjectImageConfig: { subjectType: 'SUBJECT_TYPE_DEFAULT' },
+    parts.push({
+      inlineData: {
+        mimeType: 'image/png',
+        data: referenceImageBase64,
       },
-      {
-        referenceType: 'REFERENCE_TYPE_STYLE',
-        referenceId: 2,
-        referenceImage: { bytesBase64Encoded: referenceImageBase64 },
-        styleImageConfig: {},
-      },
-    ]
+    })
   }
 
-  const body = JSON.stringify({
-    instances: [instance],
-    parameters: {
-      sampleCount: 1,
-      aspectRatio: '1:1',
-      personGeneration: 'allow_adult',
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: parts,
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['IMAGE'],
     },
-  })
+  }
 
-  const response = await fetch(`${IMAGEN_API_URL}?key=${apiKey}`, {
+  const response = await fetch(`${GEMINI_IMAGE_API_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body,
+    body: JSON.stringify(payload),
   })
-
-  // If the reference-image call fails, retry without it
-  if (!response.ok && referenceImageBase64) {
-    const fallbackBody = JSON.stringify({
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: '1:1',
-        personGeneration: 'allow_adult',
-      },
-    })
-    const fallback = await fetch(`${IMAGEN_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: fallbackBody,
-    })
-    if (!fallback.ok) {
-      const err = await fallback.text()
-      throw new Error(err)
-    }
-    const fallbackData = await fallback.json() as { predictions: { bytesBase64Encoded: string }[] }
-    const fallbackBytes = fallbackData.predictions?.[0]?.bytesBase64Encoded
-    if (!fallbackBytes) throw new Error('No image returned from Imagen')
-    return `data:image/png;base64,${fallbackBytes}`
-  }
 
   if (!response.ok) {
     const err = await response.text()
     throw new Error(err)
   }
 
-  const data = await response.json() as { predictions: { bytesBase64Encoded: string }[] }
-  const imageBytes = data.predictions?.[0]?.bytesBase64Encoded
-  if (!imageBytes) throw new Error('No image returned from Imagen')
+  const data = await response.json()
+  let imageBytes = ''
+  
+  if (data.predictions && data.predictions.length > 0) {
+    imageBytes = data.predictions[0].bytesBase64Encoded
+  } else if (data.candidates && data.candidates.length > 0) {
+    imageBytes = data.candidates[0].content.parts[0].inlineData.data
+  }
+
+  if (!imageBytes) throw new Error('No image returned from Gemini')
 
   return `data:image/png;base64,${imageBytes}`
 }

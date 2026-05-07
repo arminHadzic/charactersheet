@@ -35,7 +35,7 @@ You need a Python environment manager like `conda` or `mamba`.
    # Specifically this runs: uvicorn server.main:app --port 41232 --reload
    ```
 
-### 2. Frontend Development
+### 2. Frontend Development (Optional for testing)
 
 To run the local development frontend:
 

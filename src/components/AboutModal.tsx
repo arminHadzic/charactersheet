@@ -12,8 +12,10 @@ export default function AboutModal({ onClose }: AboutModalProps) {
           ✕
         </button>
         <h2 className="text-2xl font-bold text-white mb-4">About Character Model Sheet Generator</h2>
-        <p className="mb-6">An AI-powered tool that creates professional animation model sheets from a single character image. Built as a demo of agentic AI workflows using Google Gemini.</p>
-        
+        <p className="mb-6">
+          An AI-powered tool that creates professional animation model sheets from a single character image. Built as a demo of agentic AI workflows using Google Gemini.
+          Source code is available on <a href="https://github.com/arminHadzic/charactersheet" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">GitHub</a>.
+        </p>
         <h3 className="text-xl font-semibold text-white mb-2">How it works</h3>
         <ol className="list-decimal pl-5 space-y-2 mb-6 text-sm">
           <li><strong>Paste a character image URL</strong> — any publicly accessible image of a character</li>
