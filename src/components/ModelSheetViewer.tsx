@@ -1,7 +1,21 @@
+import { useState, useEffect } from 'react'
 import { useSessionStore } from '../store/sessionStore'
 
 export default function ModelSheetViewer() {
   const { composedSheetUrl, characterName, agentStatus } = useSessionStore()
+  const [displayUrl, setDisplayUrl] = useState(composedSheetUrl)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  useEffect(() => {
+    if (composedSheetUrl !== displayUrl) {
+      setIsTransitioning(true)
+      const timer = setTimeout(() => {
+        setDisplayUrl(composedSheetUrl)
+        setIsTransitioning(false)
+      }, 400) // smooth fade duration
+      return () => clearTimeout(timer)
+    }
+  }, [composedSheetUrl, displayUrl])
 
   const handleDownload = () => {
     if (!composedSheetUrl) return
@@ -13,7 +27,7 @@ export default function ModelSheetViewer() {
 
   const isGenerating = agentStatus !== 'idle' && agentStatus !== 'done' && agentStatus !== 'error'
 
-  if (!composedSheetUrl && !isGenerating) {
+  if (!composedSheetUrl && !isGenerating && !displayUrl) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-900 rounded-xl border border-gray-700 min-h-[400px]">
         <div className="text-center text-gray-500">
@@ -25,7 +39,7 @@ export default function ModelSheetViewer() {
     )
   }
 
-  if (!composedSheetUrl && isGenerating) {
+  if (!composedSheetUrl && isGenerating && !displayUrl) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-900 rounded-xl border border-gray-700 min-h-[400px]">
         <div className="text-center">
@@ -50,12 +64,12 @@ export default function ModelSheetViewer() {
         </button>
       </div>
 
-      <div className="flex-1 bg-gray-900 rounded-xl border border-gray-700 overflow-auto min-h-0 p-2">
-        {composedSheetUrl && (
+      <div className="flex-1 bg-gray-900 rounded-xl border border-gray-700 overflow-auto min-h-0 p-2 relative">
+        {displayUrl && (
           <img
-            src={composedSheetUrl}
+            src={displayUrl}
             alt={`${characterName} model sheet`}
-            className="w-full h-auto rounded-lg"
+            className={`w-full h-auto rounded-lg transition-opacity duration-500 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
           />
         )}
       </div>

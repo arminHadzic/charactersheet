@@ -23,6 +23,7 @@ export default function App() {
   // Local input state
   const [url, setUrl] = useState('')
   const [preferences, setPreferences] = useState('')
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   
   // Demo animation state
   const [demoState, setDemoState] = useState<DemoState>('idle')
@@ -196,8 +197,9 @@ export default function App() {
 
   const handleGenerateClick = () => {
     if (!store.apiKey) {
-      setShowApiKeyModal(true)
+      setApiKeyError('Please click "Setup API Key" above and provide your Google AI Studio API key to get started.')
     } else {
+      setApiKeyError(null)
       executeGeneration(store.isServerlessMode)
     }
   }
@@ -223,8 +225,12 @@ export default function App() {
             About
           </button>
           <button
-            onClick={() => setShowApiKeyModal(true)}
-            className="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full border border-white/10 transition-colors shadow-sm cursor-pointer"
+            onClick={() => { setShowApiKeyModal(true); setApiKeyError(null) }}
+            className={`text-xs px-4 py-2 rounded-full border transition-all duration-700 shadow-sm cursor-pointer ${
+              (demoState === 'complete' && !store.apiKey) || apiKeyError
+                ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-[0_0_15px_rgba(96,165,250,0.4)] animate-pulse' 
+                : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
+            }`}
           >
             {store.apiKey ? 'Change Key / Settings' : 'Setup API Key'}
           </button>
@@ -241,6 +247,11 @@ export default function App() {
           onGenerate={handleGenerateClick} 
           disabled={isProcessing} 
         />
+        {apiKeyError && (
+          <div className="absolute bottom-1 left-6 right-6 text-center text-red-400 text-xs font-medium animate-bounce">
+            {apiKeyError}
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}
