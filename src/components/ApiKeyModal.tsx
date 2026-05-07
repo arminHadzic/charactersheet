@@ -23,7 +23,22 @@ export default function ApiKeyModal({ onClose, onContinue }: ApiKeyModalProps) {
     return true
   }
 
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const [successMode, setSuccessMode] = useState<'server' | 'serverless' | null>(null)
+
+  const handleSaveKey = () => {
+    if (!inputKey.trim()) {
+      setApiKey('')
+      initGemini('')
+      setSaveSuccess(false)
+      setError('')
+      return
+    }
+    
+    if (handleValidation(inputKey)) {
+      setSaveSuccess(true)
+    }
+  }
 
   const handleServerRun = async () => {
     if (!handleValidation(inputKey)) return;
@@ -65,17 +80,25 @@ export default function ApiKeyModal({ onClose, onContinue }: ApiKeyModalProps) {
         </div>
 
         <div className="space-y-4 mb-6">
-          <div>
+          <div className="flex gap-2">
             <input
               type="password"
               value={inputKey}
-              onChange={(e) => { setInputKey(e.target.value); setError('') }}
+              onChange={(e) => { setInputKey(e.target.value); setError(''); setSaveSuccess(false) }}
               placeholder="AIzaSy..."
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
+              className="flex-1 px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
               autoFocus
             />
-            {error && <p className="mt-2 text-red-400 text-sm">{error}</p>}
+            <button
+              onClick={handleSaveKey}
+              className={`px-6 py-3 font-semibold rounded-lg transition-colors text-sm ${
+                saveSuccess ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+              }`}
+            >
+              {saveSuccess ? '✓ Saved' : 'Save'}
+            </button>
           </div>
+          {error && <p className="mt-2 text-red-400 text-sm">{error}</p>}
         </div>
 
         <div className="space-y-3">

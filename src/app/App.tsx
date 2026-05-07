@@ -23,7 +23,6 @@ export default function App() {
   // Local input state
   const [url, setUrl] = useState('')
   const [preferences, setPreferences] = useState('')
-  const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   
   // Demo animation state
   const [demoState, setDemoState] = useState<DemoState>('idle')
@@ -43,10 +42,10 @@ export default function App() {
       for (let i = 0; i <= targetUrl.length; i++) {
         if (isCancelled) return
         setUrl(targetUrl.substring(0, i))
-        await new Promise(r => setTimeout(r, 10)) 
+        await new Promise(r => setTimeout(r, 25)) 
       }
       
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 800))
       
       // 2. Generate Base
       setDemoState('generating_base')
@@ -57,7 +56,7 @@ export default function App() {
         setReferenceImagesData([`data:image/png;base64,${b64}`])
       }
       
-      await new Promise(r => setTimeout(r, 1200))
+      await new Promise(r => setTimeout(r, 2000))
       
       // 3. Show Base
       if (isCancelled) return
@@ -65,7 +64,7 @@ export default function App() {
       setDemoState('showing_base')
       store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet.png')
       
-      await new Promise(r => setTimeout(r, 1500))
+      await new Promise(r => setTimeout(r, 3000))
       
       // 4. Type Prompt
       setDemoState('typing_prompt')
@@ -73,32 +72,32 @@ export default function App() {
       for (let i = 0; i <= targetPrompt.length; i++) {
         if (isCancelled) return
         setPreferences(targetPrompt.substring(0, i))
-        await new Promise(r => setTimeout(r, 30))
+        await new Promise(r => setTimeout(r, 45))
       }
       
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 800))
       
       // 5. Generate Cowboy
       setDemoState('generating_cowboy')
       store.setAgentStatus('generating', 'Synthesizing new components with constraints...')
       
-      await new Promise(r => setTimeout(r, 1200))
+      await new Promise(r => setTimeout(r, 2000))
       
       // 6. Show Cowboy
       if (isCancelled) return
       store.setAgentStatus('idle', '')
       store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet_hat.png')
       
-      await new Promise(r => setTimeout(r, 2000))
+      await new Promise(r => setTimeout(r, 4000))
       
       // 7. Erase Cowboy
       for (let i = targetPrompt.length; i >= 0; i--) {
         if (isCancelled) return
         setPreferences(targetPrompt.substring(0, i))
-        await new Promise(r => setTimeout(r, 20))
+        await new Promise(r => setTimeout(r, 35))
       }
       
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise(r => setTimeout(r, 600))
       store.setComposedSheet('https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/images/penguin_character_sheet.png')
       setDemoState('complete')
     }
@@ -197,9 +196,9 @@ export default function App() {
 
   const handleGenerateClick = () => {
     if (!store.apiKey) {
-      setApiKeyError('Please click "Setup API Key" above and provide your Google AI Studio API key to get started.')
+      store.setAgentStatus('error', 'Please click "Setup API Key" above and provide your Google AI Studio API key to get started.')
     } else {
-      setApiKeyError(null)
+      store.setAgentStatus('idle', '')
       executeGeneration(store.isServerlessMode)
     }
   }
@@ -225,9 +224,9 @@ export default function App() {
             About
           </button>
           <button
-            onClick={() => { setShowApiKeyModal(true); setApiKeyError(null) }}
+            onClick={() => setShowApiKeyModal(true)}
             className={`text-xs px-4 py-2 rounded-full border transition-all duration-700 shadow-sm cursor-pointer ${
-              (demoState === 'complete' && !store.apiKey) || apiKeyError
+              (demoState === 'complete' && !store.apiKey)
                 ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-[0_0_15px_rgba(96,165,250,0.4)] animate-pulse' 
                 : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
             }`}
@@ -247,11 +246,6 @@ export default function App() {
           onGenerate={handleGenerateClick} 
           disabled={isProcessing} 
         />
-        {apiKeyError && (
-          <div className="absolute bottom-1 left-6 right-6 text-center text-red-400 text-xs font-medium animate-bounce">
-            {apiKeyError}
-          </div>
-        )}
       </div>
 
       {/* Status Bar */}
