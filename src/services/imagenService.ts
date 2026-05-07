@@ -77,28 +77,40 @@ export async function generateImage(
   return `data:image/png;base64,${imageBytes}`
 }
 
-/**
- * Fetch an image URL and return its raw base64 bytes (no data-URL prefix).
- * Returns null if fetching fails (CORS, network error, etc.).
- */
 export async function fetchImageAsBase64(url: string): Promise<string | null> {
-  // Data URLs: extract base64 directly
-  if (url.startsWith('data:')) {
-    const parts = url.split(',')
-    return parts[1] ?? null
-  }
   try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const blob = await res.blob()
-    return new Promise<string | null>((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        resolve(result.split(',')[1] ?? null)
+    let objectUrl = url
+    if (!url.startsWith('data:')) {
+      const res = await fetch(url)
+      if (!res.ok) return null
+      const blob = await res.blob()
+      objectUrl = URL.createObjectURL(blob)
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width || 512
+        canvas.height = img.height || 512
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(null)
+          return
+        }
+        // Use white background for transparent images/SVGs
+        ctx.fillStyle = 'white'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/png')
+        if (objectUrl !== url) URL.revokeObjectURL(objectUrl)
+        resolve(dataUrl.split(',')[1] ?? null)
       }
-      reader.onerror = () => resolve(null)
-      reader.readAsDataURL(blob)
+      img.onerror = () => {
+        if (objectUrl !== url) URL.revokeObjectURL(objectUrl)
+        resolve(null)
+      }
+      img.src = objectUrl
     })
   } catch {
     return null

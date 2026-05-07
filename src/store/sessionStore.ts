@@ -6,9 +6,14 @@ interface SessionState {
   apiKey: string
   setApiKey: (key: string) => void
 
+  // Serverless
+  isServerlessMode: boolean
+  setServerlessMode: (isServerless: boolean) => void
+
   // Character input
   characterUrl: string
   setCharacterUrl: (url: string) => void
+
 
   // Chat
   messages: ChatMessage[]
@@ -44,6 +49,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setApiKey: (key) => {
     localStorage.setItem('gemini_api_key', key)
     set({ apiKey: key })
+  },
+
+  isServerlessMode: localStorage.getItem('serverless_mode') === 'true',
+  setServerlessMode: (isServerless) => {
+    localStorage.setItem('serverless_mode', String(isServerless))
+    set({ isServerlessMode: isServerless })
   },
 
   characterUrl: '',

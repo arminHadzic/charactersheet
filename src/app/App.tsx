@@ -1,27 +1,101 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSessionStore } from '../store/sessionStore'
-import { submitToLangGraph } from '../services/backendService'
+import { submitToLangGraph, submitServerless } from '../services/backendService'
 import { composeModelSheet } from '../canvas/sheetComposer'
 import { fetchImageAsBase64 } from '../services/imagenService'
 import type { SheetPlan, SheetComponent, ComponentType } from '../agent/types'
-import ApiKeyGate from '../components/ApiKeyGate'
 import CharacterInput from '../components/CharacterInput'
 import AgentStatusBar from '../components/AgentStatusBar'
 import ModelSheetViewer from '../components/ModelSheetViewer'
+import ApiKeyModal from '../components/ApiKeyModal'
+import AboutModal from '../components/AboutModal'
+
+type DemoState = 'idle' | 'typing_url' | 'generating_base' | 'showing_base' | 'typing_prompt' | 'generating_cowboy' | 'complete'
 
 export default function App() {
-  return (
-    <ApiKeyGate>
-      <MainApp />
-    </ApiKeyGate>
-  )
-}
-
-function MainApp() {
   const store = useSessionStore()
   const [referenceImagesData, setReferenceImagesData] = useState<string[]>([])
+  
+  // Modals state
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false)
+  const [showAboutModal, setShowAboutModal] = useState(false)
+  
+  // Local input state
+  const [url, setUrl] = useState('')
+  const [preferences, setPreferences] = useState('')
+  
+  // Demo animation state
+  const [demoState, setDemoState] = useState<DemoState>('idle')
+  const hasRunDemo = useRef(false)
 
-  // React to compositionTrigger
+  // Demo Animation sequence on mount
+  useEffect(() => {
+    if (hasRunDemo.current) return
+    hasRunDemo.current = true
+
+    let isCancelled = false
+    
+    const runDemo = async () => {
+      // 1. Type URL
+      setDemoState('typing_url')
+      const targetUrl = 'https://raw.githubusercontent.com/arminHadzic/arminHadzic.github.io/refs/heads/master/assets/svg/penguin.svg'
+      for (let i = 0; i <= targetUrl.length; i++) {
+        if (isCancelled) return
+        setUrl(targetUrl.substring(0, i))
+        await new Promise(r => setTimeout(r, 15)) 
+      }
+      
+      await new Promise(r => setTimeout(r, 400))
+      
+      // 2. Generate Base
+      setDemoState('generating_base')
+      store.setAgentStatus('analyzing', 'Extracting stylistic constraints and dispatching to backend pipeline...')
+      
+      const b64 = await fetchImageAsBase64(targetUrl)
+      if (b64 && !isCancelled) {
+        setReferenceImagesData([`data:image/png;base64,${b64}`])
+      }
+      
+      await new Promise(r => setTimeout(r, 1200))
+      
+      // 3. Show Base
+      if (isCancelled) return
+      store.setAgentStatus('idle', '')
+      setDemoState('showing_base')
+      store.setComposedSheet('/penguin_base_model_sheet.png')
+      
+      await new Promise(r => setTimeout(r, 1500))
+      
+      // 4. Type Prompt
+      setDemoState('typing_prompt')
+      const targetPrompt = 'Have the character wear a cowboy hat.'
+      for (let i = 0; i <= targetPrompt.length; i++) {
+        if (isCancelled) return
+        setPreferences(targetPrompt.substring(0, i))
+        await new Promise(r => setTimeout(r, 30))
+      }
+      
+      await new Promise(r => setTimeout(r, 400))
+      
+      // 5. Generate Cowboy
+      setDemoState('generating_cowboy')
+      store.setAgentStatus('generating', 'Synthesizing new components with constraints...')
+      
+      await new Promise(r => setTimeout(r, 1200))
+      
+      // 6. Show Cowboy
+      if (isCancelled) return
+      store.setAgentStatus('idle', '')
+      setDemoState('complete')
+      store.setComposedSheet('/penguin_cowboy_model_sheet.png')
+    }
+    
+    runDemo()
+    
+    return () => { isCancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // React to LangGraph composition trigger
   useEffect(() => {
     if (store.compositionTrigger === 0) return
     const components = store.getComponents()
@@ -35,15 +109,15 @@ function MainApp() {
       })
   }, [store.compositionTrigger, store])
 
-  const isProcessing = store.agentStatus === 'analyzing' || store.agentStatus === 'generating' || store.agentStatus === 'composing'
+  const isProcessing = store.agentStatus === 'analyzing' || store.agentStatus === 'generating' || store.agentStatus === 'composing' || demoState !== 'complete'
 
-  const handleGenerate = async (urlsString: string, preferences: string) => {
+  const executeGeneration = async (serverless: boolean) => {
     store.reset()
-    store.setCharacterUrl(urlsString)
+    store.setCharacterUrl(url)
     setReferenceImagesData([])
-    store.setAgentStatus('analyzing', 'Extracting stylistic constraints and dispatching to backend pipeline...')
+    store.setAgentStatus('analyzing', serverless ? 'Generating directly with Gemini API...' : 'Extracting constraints and dispatching to LangGraph pipeline...')
 
-    const urlArray = urlsString.trim().split(/\s+/)
+    const urlArray = url.trim().split(/\s+/)
     const b64s: string[] = []
 
     for (const u of urlArray) {
@@ -60,33 +134,66 @@ function MainApp() {
     }
 
     try {
-      // Direct call to local python backend
-      const response = await submitToLangGraph(store.apiKey, b64s, preferences)
+      let mappedComponents: SheetComponent[]
       
-      const mappedComponents: SheetComponent[] = response.components.map(c => ({
-        id: c.id,
-        type: c.type as ComponentType,
-        label: c.type.replace(/_/g, ' ').toUpperCase(),
-        generationPrompt: '',
-        status: 'done',
-        imageData: c.imageData
-      }))
-
-      const plan: SheetPlan = {
-        characterName: 'Character', // Could be extracted dynamically if we wanted to
-        components: mappedComponents,
-        layoutPreference: 'hierarchical',
+      if (serverless) {
+        const response = await submitServerless(store.apiKey, b64s, preferences)
+        mappedComponents = response.components.map(c => ({
+          id: c.id,
+          type: c.type as ComponentType,
+          label: c.type.replace(/_/g, ' ').toUpperCase(),
+          generationPrompt: '',
+          status: 'done',
+          imageData: c.imageData
+        }))
+      } else {
+        const response = await submitToLangGraph(store.apiKey, b64s, preferences)
+        mappedComponents = response.components.map(c => ({
+          id: c.id,
+          type: c.type as ComponentType,
+          label: c.type.replace(/_/g, ' ').toUpperCase(),
+          generationPrompt: '',
+          status: 'done',
+          imageData: c.imageData
+        }))
       }
-      
-      store.setAgentStatus('composing', 'Combining component assets...')
-      store.setSheetPlan(plan)
-      store.setCharacterName('Character')
-      store.triggerCompose('Character')
+
+      if (serverless && mappedComponents.length > 0) {
+        store.setAgentStatus('idle', '')
+        if (mappedComponents[0].imageData) {
+          store.setComposedSheet(mappedComponents[0].imageData)
+        }
+      } else {
+        const plan: SheetPlan = {
+          characterName: 'Character',
+          components: mappedComponents,
+          layoutPreference: 'hierarchical',
+        }
+        
+        store.setAgentStatus('composing', 'Combining component assets...')
+        store.setSheetPlan(plan)
+        store.setCharacterName('Character')
+        store.triggerCompose('Character')
+      }
       
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       store.setAgentStatus('error', msg)
     }
+  }
+
+  const handleGenerateClick = () => {
+    if (!store.apiKey) {
+      setShowApiKeyModal(true)
+    } else {
+      executeGeneration(store.isServerlessMode)
+    }
+  }
+
+  const handleApiKeyModalContinue = (serverless: boolean) => {
+    store.setServerlessMode(serverless)
+    setShowApiKeyModal(false)
+    executeGeneration(serverless)
   }
 
   return (
@@ -99,20 +206,30 @@ function MainApp() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              localStorage.removeItem('gemini_api_key')
-              window.location.reload()
-            }}
+            onClick={() => setShowAboutModal(true)}
             className="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full border border-white/10 transition-colors shadow-sm cursor-pointer"
           >
-            Switch API Key
+            About
+          </button>
+          <button
+            onClick={() => setShowApiKeyModal(true)}
+            className="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full border border-white/10 transition-colors shadow-sm cursor-pointer"
+          >
+            {store.apiKey ? 'Change Key / Settings' : 'Setup API Key'}
           </button>
         </div>
       </header>
 
       {/* URL Input */}
       <div className="border-b border-white/10 px-6 py-5 bg-white/5 backdrop-blur-sm z-10 shadow-sm relative">
-        <CharacterInput onGenerate={handleGenerate} disabled={isProcessing} />
+        <CharacterInput 
+          url={url}
+          onUrlChange={setUrl}
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          onGenerate={handleGenerateClick} 
+          disabled={isProcessing} 
+        />
       </div>
 
       {/* Status Bar */}
@@ -153,6 +270,19 @@ function MainApp() {
           <ModelSheetViewer />
         </div>
       </div>
+
+      {showApiKeyModal && (
+        <ApiKeyModal 
+          onClose={() => setShowApiKeyModal(false)} 
+          onContinue={handleApiKeyModalContinue} 
+        />
+      )}
+
+      {showAboutModal && (
+        <AboutModal 
+          onClose={() => setShowAboutModal(false)} 
+        />
+      )}
     </div>
   )
 }

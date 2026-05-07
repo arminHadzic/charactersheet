@@ -1,3 +1,4 @@
+import { generateImage } from './imagenService'
 
 interface GeneratePayload {
   apiKey: string
@@ -40,4 +41,26 @@ export async function submitToLangGraph(
   }
 
   return await res.json() as GenerateResponse
+}
+
+export async function submitServerless(
+  apiKey: string,
+  imagesBase64: string[],
+  userPreferences: string
+): Promise<GenerateResponse> {
+  const prompt = `A professional animation model sheet of the character. ${userPreferences || ''} The sheet includes a front view, side view, and action poses. The style is clean, vector-like, colorful, and suitable for animation.`
+  const refImage = imagesBase64[0] || null
+  
+  // Directly call Gemini API
+  const generatedBase64 = await generateImage(apiKey, prompt, refImage)
+
+  return {
+    components: [
+      {
+        id: "serverless-sheet",
+        type: "composite",
+        imageData: generatedBase64
+      }
+    ]
+  }
 }
