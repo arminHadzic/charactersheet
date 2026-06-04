@@ -211,12 +211,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-gray-900 to-slate-900 text-white flex flex-col font-sans">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-md px-6 py-4 flex items-center justify-between shadow-sm z-10">
-        <div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Character Model Sheet Generator</h1>
-          <p className="text-xs text-gray-400 mt-1">Powered by FastAPI, LangGraph, and Gemini 3.1 Flash Image</p>
+      <header className="border-b border-white/10 bg-black/20 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3 shadow-sm z-10">
+        <div className="min-w-0">
+          <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Character Model Sheet Generator</h1>
+          <p className="text-[10px] md:text-xs text-gray-400 mt-1">Powered by FastAPI, LangGraph, and Gemini 3.1 Flash Image</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           <button
             onClick={() => setShowAboutModal(true)}
             className="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full border border-white/10 transition-colors shadow-sm cursor-pointer"
@@ -237,7 +237,7 @@ export default function App() {
       </header>
 
       {/* URL Input */}
-      <div className="border-b border-white/10 px-6 py-5 bg-white/5 backdrop-blur-sm z-10 shadow-sm relative">
+      <div className="border-b border-white/10 px-4 md:px-6 py-4 md:py-5 bg-white/5 backdrop-blur-sm z-10 shadow-sm relative">
         <CharacterInput 
           url={url}
           onUrlChange={setUrl}
@@ -250,39 +250,39 @@ export default function App() {
 
       {/* Status Bar */}
       {store.agentStatus !== 'idle' && (
-        <div className="px-6 py-3 border-b border-white/10 bg-indigo-900/30 backdrop-blur-md">
+        <div className="px-4 md:px-6 py-3 border-b border-white/10 bg-indigo-900/30 backdrop-blur-md">
           <AgentStatusBar />
         </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Left sidebar: Reference Image Display */}
-        <div className="w-80 flex-shrink-0 border-r border-white/10 flex flex-col p-5 bg-black/30 backdrop-blur-2xl overflow-y-auto shadow-2xl relative z-10 filter drop-shadow-lg">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-white/10 pb-3 flex items-center justify-between">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 md:overflow-hidden relative">
+        {/* References: horizontal strip on mobile, left sidebar on desktop */}
+        <div className="w-full md:w-80 flex-shrink-0 border-b md:border-b-0 md:border-r border-white/10 flex flex-col p-4 md:p-5 bg-black/30 backdrop-blur-2xl md:overflow-y-auto shadow-2xl relative z-10 filter drop-shadow-lg">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4 border-b border-white/10 pb-3 flex items-center justify-between">
             <span>References</span>
             {referenceImagesData.length > 0 && (
               <span className="bg-blue-600/30 text-blue-300 py-0.5 px-2 rounded-full font-mono text-[10px]">{referenceImagesData.length}</span>
             )}
           </h2>
           {referenceImagesData.length > 0 ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-row md:flex-col gap-3 md:gap-4 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
               {referenceImagesData.map((src, idx) => (
-                <div key={idx} className="p-2 bg-white/5 border border-white/10 rounded-xl shadow-lg relative group">
+                <div key={idx} className="p-2 bg-white/5 border border-white/10 rounded-xl shadow-lg relative group flex-shrink-0 w-32 md:w-full">
                   <span className="absolute -top-2 -left-2 bg-blue-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md z-10">{idx+1}</span>
                   <img src={src} alt={`Ref ${idx}`} className="w-full rounded-lg shadow-inner bg-white" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-sm p-6 text-center border-2 border-dashed border-white/10 rounded-2xl bg-white/5 my-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-xs md:text-sm p-4 md:p-6 text-center border-2 border-dashed border-white/10 rounded-2xl bg-white/5 md:my-4">
                {isProcessing ? "Fetching image data..." : "Add URLs above to build a multi-angle context."}
             </div>
           )}
         </div>
 
         {/* Main panel: model sheet */}
-        <div className="flex-1 p-8 flex flex-col min-h-0 overflow-auto items-center justify-center bg-transparent">
+        <div className="flex-1 p-4 md:p-8 flex flex-col min-h-0 md:overflow-auto items-center justify-center bg-transparent">
           <ModelSheetViewer />
         </div>
       </div>

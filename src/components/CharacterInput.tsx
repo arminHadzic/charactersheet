@@ -28,7 +28,7 @@ export default function CharacterInput({ url, onUrlChange, preferences, onPrefer
           className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-sm disabled:opacity-50"
         />
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <textarea
           value={preferences}
           onChange={(e) => onPreferencesChange(e.target.value)}
