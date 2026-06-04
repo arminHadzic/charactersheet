@@ -51,14 +51,15 @@ export default function ModelSheetViewer() {
   }
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-300">
+    <div className="flex-1 flex flex-col gap-3 min-h-0 w-full">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-gray-300 min-w-0 truncate">
           {characterName} — Model Sheet
         </h2>
+        {/* Desktop: inline download button in the header */}
         <button
           onClick={handleDownload}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors text-sm"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors text-sm flex-shrink-0"
         >
           <span>↓</span> Download PNG
         </button>
@@ -73,6 +74,14 @@ export default function ModelSheetViewer() {
           />
         )}
       </div>
+
+      {/* Mobile: full-width download button below the sheet */}
+      <button
+        onClick={handleDownload}
+        className="sm:hidden flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors text-sm"
+      >
+        <span>↓</span> Download PNG
+      </button>
     </div>
   )
 }
