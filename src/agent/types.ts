@@ -38,12 +38,6 @@ export interface SheetPlan {
   layoutPreference: 'grid' | 'hierarchical'
 }
 
-export interface ChatMessage {
-  role: 'user' | 'agent'
-  content: string
-  timestamp: number
-}
-
 export type AgentStatus =
   | 'idle'
   | 'analyzing'

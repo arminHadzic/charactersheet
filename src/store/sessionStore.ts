@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, SheetComponent, SheetPlan, AgentStatus } from '../agent/types'
+import type { SheetComponent, SheetPlan, AgentStatus } from '../agent/types'
 
 interface SessionState {
   // API key
@@ -14,10 +14,6 @@ interface SessionState {
   characterUrl: string
   setCharacterUrl: (url: string) => void
 
-
-  // Chat
-  messages: ChatMessage[]
-  addMessage: (role: 'user' | 'agent', content: string) => void
 
   // Agent status
   agentStatus: AgentStatus
@@ -60,12 +56,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   characterUrl: '',
   setCharacterUrl: (url) => set({ characterUrl: url }),
 
-  messages: [],
-  addMessage: (role, content) =>
-    set((s) => ({
-      messages: [...s.messages, { role, content, timestamp: Date.now() }],
-    })),
-
   agentStatus: 'idle',
   agentStatusDetail: '',
   setAgentStatus: (status, detail = '') => set({ agentStatus: status, agentStatusDetail: detail }),
@@ -101,7 +91,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   reset: () =>
     set({
       characterUrl: '',
-      messages: [],
       agentStatus: 'idle',
       agentStatusDetail: '',
       sheetPlan: null,
